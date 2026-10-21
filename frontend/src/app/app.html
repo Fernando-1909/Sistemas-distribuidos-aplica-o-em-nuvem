@@ -1,0 +1,97 @@
+<main class="page">
+  <header class="top">
+    <div class="brand">
+      <span class="orb" aria-hidden="true"></span>
+      <div>
+        <h1>névoa</h1>
+        <p>Suas tarefas, no ritmo certo.</p>
+      </div>
+    </div>
+
+    <div class="tools">
+      <input
+        class="search"
+        type="search"
+        placeholder="Buscar tarefas"
+        aria-label="Buscar tarefas"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+      <button class="btn primary" type="button" (click)="openNew()">Nova tarefa</button>
+    </div>
+  </header>
+
+  <section class="progress" aria-label="Progresso geral">
+    <div class="progress-text">
+      <strong>{{ percent() }}%</strong>
+      <span>{{ doneCount() }} de {{ total() }} {{ total() === 1 ? 'tarefa concluída' : 'tarefas concluídas' }}</span>
+    </div>
+    <div class="bar" role="progressbar" [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
+      <span [style.width.%]="percent()"></span>
+    </div>
+  </section>
+
+  @if (loadError()) {
+    <div class="banner" role="alert">
+      <p>{{ loadError() }}</p>
+      <button class="btn ghost" type="button" (click)="load()">Tentar de novo</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="loading">
+      Carregando tarefas… na primeira visita do dia o servidor gratuito pode levar cerca de um minuto para acordar.
+    </p>
+  } @else {
+    <section class="board">
+      @for (col of columns; track col.status) {
+        <div class="column" [attr.data-status]="col.status">
+          <h2>
+            {{ col.label }}
+            <span class="count">{{ byStatus(col.status).length }}</span>
+          </h2>
+
+          @for (task of byStatus(col.status); track task.id) {
+            <article class="card">
+              <h3>{{ task.title }}</h3>
+              @if (task.description) {
+                <p class="desc">{{ task.description }}</p>
+              }
+
+              <div class="meta">
+                @if (task.responsible) {
+                  <span class="who">
+                    <span class="avatar" aria-hidden="true">{{ initials(task.responsible) }}</span>
+                    {{ task.responsible }}
+                  </span>
+                } @else {
+                  <span class="who none">Sem responsável</span>
+                }
+              </div>
+
+              <div class="card-actions">
+                <button class="btn small move" type="button" (click)="move(task)">
+                  {{ next[task.status].label }}
+                </button>
+                <button class="btn small ghost" type="button" (click)="openEdit(task)">Editar</button>
+                <button class="btn small ghost danger" type="button" (click)="remove(task)">Excluir</button>
+              </div>
+            </article>
+          } @empty {
+            <p class="empty">{{ search() ? 'Nenhuma tarefa encontrada.' : col.hint }}</p>
+          }
+        </div>
+      }
+    </section>
+  }
+</main>
+
+@if (formOpen()) {
+  <app-task-form
+    [task]="editing()"
+    [saving]="saving()"
+    [error]="formError()"
+    (save)="save($event)"
+    (cancel)="closeForm()"
+  />
+}
