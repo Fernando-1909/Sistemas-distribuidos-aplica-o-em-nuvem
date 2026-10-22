@@ -1,8 +1,8 @@
-<<<<<<< HEAD
+
 # Gerenciador de tarefas distribuído
-=======
+
 # gerenciador legal — Gerenciador de tarefas distribuído
->>>>>>> da5223486bf60617f220ceb6d769b2d111579085
+
 
 Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC).
 Este repositório corresponde ao **Módulo 1 — Computação em Nuvem**: uma API REST com CRUD de tarefas, banco de dados hospedado e URL pública, mais um frontend Angular para usar a API.
