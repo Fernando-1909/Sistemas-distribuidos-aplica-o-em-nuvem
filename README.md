@@ -4,8 +4,8 @@ Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC).
 Este repositório corresponde ao **Módulo 1 — Computação em Nuvem**: uma API REST com CRUD de tarefas, banco de dados hospedado e URL pública, mais um frontend Angular para usar a API.
 
 - **Vídeo de demonstração:** _cole aqui o link do YouTube (não listado)_
-- **Frontend (URL pública):** _https://SEU-FRONTEND.onrender.com_
-- **API (URL pública):** _https://SEU-BACKEND.onrender.com/api/_
+- **Frontend (URL pública):** _[https://SEU-FRONTEND.onrender.com](https://tarefas-frontend-hn3e.onrender.com/)_
+- **API (URL pública):** _[https://SEU-BACKEND.onrender.com/api/](https://sistemas-distribuidos-aplica-o-em-nuvem.onrender.com/api/)_
 
 ## Arquitetura (Módulo 1)
 
