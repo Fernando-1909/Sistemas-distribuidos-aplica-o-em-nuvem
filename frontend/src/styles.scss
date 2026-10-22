@@ -1,19 +1,57 @@
-:root {
-  --bg: #15121b;
-  --sidebar: #1a1722;
-  --raised: #1f1b29;
-  --hover: #252030;
-  --border: #2c2738;
-  --border-strong: #3b3549;
-  --text: #ebe7f2;
-  --text-2: #b6aec7;
-  --muted: #837c97;
-  --accent: #b59cf5;
-  --accent-ink: #1a1030;
-  --accent-soft: rgba(181, 156, 245, 0.14);
-  --pink: #ec9fc7;
-  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+/* Tema escuro (padrão): ameixa quase preta, neutros quentes, uma cor de marca (framboesa). */
+:root,
+:root[data-theme='dark'] {
+  --bg: #1b1520;
+  --sidebar: #211a27;
+  --raised: #281f2f;
+  --hover: #31273a;
+  --border: #382d41;
+  --border-strong: #4b3e56;
+  --text: #f5eef2;
+  --text-2: #cdc0ca;
+  --muted: #94858f;
+  --brand: #d93e72;
+  --brand-hover: #e5558a;
+  --brand-text: #f47da6;
+  --brand-soft: rgba(217, 62, 114, 0.16);
+  --plum: #b79ad9;
+  --green: #4cc38a;
+  --done: #6f5f72;
+  --ring: #6f6075;
+  --p1: #ef5456;
+  --p2: #f59a3d;
+  --p3: #5b95f7;
   color-scheme: dark;
+}
+
+/* Tema claro: papel quente e tinta ameixa (o mais próximo do Todoist). */
+:root[data-theme='light'] {
+  --bg: #fffaf6;
+  --sidebar: #f8eee8;
+  --raised: #ffffff;
+  --hover: #f1e4dc;
+  --border: #ecdfd7;
+  --border-strong: #dbc9bf;
+  --text: #2b1d29;
+  --text-2: #5e4b5a;
+  --muted: #8b7885;
+  --brand: #d3366a;
+  --brand-hover: #bf2b5d;
+  --brand-text: #c42a5d;
+  --brand-soft: #f9dde6;
+  --plum: #8a63c0;
+  --green: #228a5a;
+  --done: #bba9b2;
+  --ring: #b3a2ac;
+  --p1: #d9363a;
+  --p2: #dc7a0f;
+  --p3: #2f6fe0;
+  color-scheme: light;
+}
+
+:root {
+  --font: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --hand: 'Shantell Sans', 'Comic Sans MS', cursive;
 }
 
 * {
@@ -29,7 +67,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 400 0.875rem/1.45 var(--font);
+  font: 400 0.9375rem/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -42,42 +80,41 @@ select {
 }
 
 .btn {
-  height: 2rem;
-  padding: 0 0.85rem;
+  height: 2.1rem;
+  padding: 0 1rem;
   border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
 
   &:disabled {
-    opacity: 0.55;
-    cursor: wait;
+    opacity: 0.5;
+    cursor: default;
   }
   &.primary {
-    background: var(--accent);
-    color: var(--accent-ink);
+    background: var(--brand);
+    color: #fff;
     &:hover:not(:disabled) {
-      background: #c6b3f8;
+      background: var(--brand-hover);
     }
   }
   &.ghost {
-    background: transparent;
-    border-color: var(--border-strong);
+    background: var(--hover);
     color: var(--text-2);
     &:hover:not(:disabled) {
-      background: var(--hover);
       color: var(--text);
+      background: var(--border);
     }
   }
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand-text);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: rgba(181, 156, 245, 0.35);
+  background: var(--brand-soft);
 }

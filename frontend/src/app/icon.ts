@@ -1,8 +1,9 @@
 import { Component, input } from '@angular/core';
 
 export type IconName =
-  | 'plus' | 'check' | 'edit' | 'trash' | 'play' | 'search' | 'list' | 'board'
-  | 'menu' | 'inbox' | 'circle' | 'progress' | 'done';
+  | 'plus' | 'check' | 'edit' | 'trash' | 'play' | 'search' | 'list' | 'board' | 'menu'
+  | 'inbox' | 'circle' | 'progress' | 'done' | 'today' | 'upcoming' | 'calendar' | 'flag'
+  | 'sun' | 'moon';
 
 /** Ícones de traço simples (24x24), sem dependências externas. */
 @Component({
@@ -33,6 +34,12 @@ export type IconName =
         @case ('circle') { <circle cx="12" cy="12" r="8.5" /> }
         @case ('progress') { <circle cx="12" cy="12" r="8.5" /><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor" /> }
         @case ('done') { <circle cx="12" cy="12" r="8.5" /><path d="m8.5 12.3 2.5 2.5 4.5-5" /> }
+        @case ('today') { <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4" /><rect x="8" y="13" width="4" height="3.5" rx="0.8" fill="currentColor" /> }
+        @case ('upcoming') { <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4M8 14h8M8 17h5" /> }
+        @case ('calendar') { <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M3.5 9.5h17M8 2.5v4M16 2.5v4" /> }
+        @case ('flag') { <path d="M5 21V4M5 4h12l-2.5 4 2.5 4H5" /> }
+        @case ('sun') { <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /> }
+        @case ('moon') { <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /> }
       }
     </svg>
   `,

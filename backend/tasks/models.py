@@ -8,12 +8,22 @@ class Task(models.Model):
         IN_PROGRESS = "in_progress", "Em andamento"
         DONE = "done", "Concluída"
 
+    class Priority(models.IntegerChoices):
+        URGENT = 1, "Urgente"
+        HIGH = 2, "Alta"
+        MEDIUM = 3, "Média"
+        LOW = 4, "Baixa"
+
     title = models.CharField("título", max_length=200)
     description = models.TextField("descrição", blank=True)
     status = models.CharField(
         "status", max_length=20, choices=Status.choices, default=Status.PENDING
     )
     responsible = models.CharField("responsável", max_length=100, blank=True)
+    priority = models.PositiveSmallIntegerField(
+        "prioridade", choices=Priority.choices, default=Priority.LOW
+    )
+    due_date = models.DateField("data de entrega", null=True, blank=True)
     created_at = models.DateTimeField("criada em", auto_now_add=True)
     updated_at = models.DateTimeField("atualizada em", auto_now=True)
     # Preenchido quando a tarefa vira "concluída" (base do evento do Módulo 4)

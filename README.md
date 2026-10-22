@@ -1,8 +1,4 @@
-
 # Gerenciador de tarefas distribuído
-
-# gerenciador legal — Gerenciador de tarefas distribuído
-
 
 Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC).
 Este repositório corresponde ao **Módulo 1 — Computação em Nuvem**: uma API REST com CRUD de tarefas, banco de dados hospedado e URL pública, mais um frontend Angular para usar a API.
@@ -20,7 +16,7 @@ Este repositório corresponde ao **Módulo 1 — Computação em Nuvem**: uma AP
 
 | Camada   | Tecnologia                              | Onde roda                  |
 |----------|-----------------------------------------|----------------------------|
-| Frontend | Angular 20 (tema escuro roxo/rosa)      | Render — Static Site       |
+| Frontend | Angular 20 (tema escuro/claro)          | Render — Static Site       |
 | Backend  | Python + Django + Django REST Framework | Render — Web Service       |
 | Banco    | PostgreSQL                              | Neon — plano gratuito      |
 
@@ -35,6 +31,10 @@ scripts/    testar-api.sh  → teste documentado com curl
 render.yaml Atalho opcional para criar os serviços no Render
 ```
 
+## O frontend
+
+Lista de tarefas com visões **Hoje** (inclui atrasadas), **Em breve** (agrupadas por data) e **Todas**, filtros por status e por responsável, prioridades P1–P4 (a cor do círculo indica a prioridade), datas de entrega, alternância Lista/Quadro e tema escuro/claro (botão no rodapé da barra lateral). Atalhos: **Q** abre uma nova tarefa e **/** foca a busca.
+
 ## API
 
 | Método | Rota                         | O que faz                                   |
@@ -46,7 +46,7 @@ render.yaml Atalho opcional para criar os serviços no Render
 | PUT/PATCH | `/api/tasks/<id>/`        | Atualiza uma tarefa                         |
 | DELETE | `/api/tasks/<id>/`           | Remove uma tarefa                           |
 
-Campos da tarefa: `title`, `description`, `status` (`pending`, `in_progress`, `done`), `responsible`, e os automáticos `id`, `created_at`, `updated_at` e `completed_at` (preenchido quando a tarefa vira `done` — será a base do evento "tarefa concluída" no Módulo 4).
+Campos da tarefa: `title`, `description`, `status` (`pending`, `in_progress`, `done`), `responsible`, `priority` (1 = urgente ... 4 = baixa, padrão 4), `due_date` (formato `AAAA-MM-DD`, opcional), e os automáticos `id`, `created_at`, `updated_at` e `completed_at` (preenchido quando a tarefa vira `done` — será a base do evento "tarefa concluída" no Módulo 4).
 
 ## Rodando localmente
 

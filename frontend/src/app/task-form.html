@@ -1,25 +1,10 @@
 <div class="backdrop" (click)="cancel.emit()" (keydown.escape)="cancel.emit()" role="presentation">
-  <form
-    class="dialog"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="dialog-title"
-    (click)="$event.stopPropagation()"
-    (ngSubmit)="submit()"
-    novalidate
-  >
+  <form class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" (click)="$event.stopPropagation()" (ngSubmit)="submit()" novalidate>
     <h2 id="dialog-title">{{ task() ? 'Editar tarefa' : 'Nova tarefa' }}</h2>
 
     <label>
       Título
-      <input
-        name="title"
-        [(ngModel)]="model.title"
-        maxlength="200"
-        placeholder="Ex.: Publicar a API no Render"
-        autofocus
-        [class.invalid]="touched() && !model.title.trim()"
-      />
+      <input name="title" [(ngModel)]="model.title" maxlength="200" placeholder="Ex.: Publicar a API no Render" autofocus [class.invalid]="touched() && !model.title.trim()" />
       @if (touched() && !model.title.trim()) {
         <small class="field-error">Informe um título para a tarefa.</small>
       }
@@ -27,18 +12,13 @@
 
     <label>
       Descrição
-      <textarea
-        name="description"
-        [(ngModel)]="model.description"
-        rows="3"
-        placeholder="Detalhes opcionais"
-      ></textarea>
+      <textarea name="description" [(ngModel)]="model.description" rows="3" placeholder="Detalhes opcionais"></textarea>
     </label>
 
     <div class="row">
       <label>
-        Responsável
-        <input name="responsible" [(ngModel)]="model.responsible" maxlength="100" placeholder="Nome" />
+        Data de entrega
+        <input type="date" name="due" [(ngModel)]="model.due_date" />
       </label>
       <label>
         Status
@@ -50,15 +30,24 @@
       </label>
     </div>
 
+    <div class="row">
+      <label>
+        Responsável
+        <input name="responsible" [(ngModel)]="model.responsible" maxlength="100" placeholder="Nome" />
+      </label>
+      <div class="field">
+        Prioridade
+        <app-priority [(value)]="model.priority" />
+      </div>
+    </div>
+
     @if (error()) {
       <p class="form-error" role="alert">{{ error() }}</p>
     }
 
     <div class="actions">
       <button type="button" class="btn ghost" (click)="cancel.emit()">Cancelar</button>
-      <button type="submit" class="btn primary" [disabled]="saving()">
-        {{ saving() ? 'Salvando…' : 'Salvar' }}
-      </button>
+      <button type="submit" class="btn primary" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar' }}</button>
     </div>
   </form>
 </div>

@@ -16,7 +16,7 @@ curl -sS --max-time 90 "$BASE/health/"; echo; echo
 
 echo "==> 1. CRIAR tarefa (POST /tasks/)"
 CREATED=$(curl -sS --max-time 90 -X POST "$BASE/tasks/" -H "$JSON" \
-  -d '{"title":"Publicar API no Render","description":"Modulo 1","responsible":"Equipe"}')
+  -d '{"title":"Publicar API no Render","description":"Modulo 1","responsible":"Equipe","priority":1,"due_date":"2026-11-13"}')
 echo "$CREATED"; ID=$(echo "$CREATED" | get_id); echo
 
 echo "==> 2. LISTAR tarefas (GET /tasks/)"
