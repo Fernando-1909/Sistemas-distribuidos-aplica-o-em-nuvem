@@ -4,7 +4,7 @@
 - API REST de tarefas (Django + Django REST Framework) com CRUD completo.
 - Banco PostgreSQL hospedado no Neon (free tier), configurado por `DATABASE_URL` (funciona com qualquer PostgreSQL).
 - Backend publicado no Render (Web Service gratuito) com variáveis de ambiente configuradas no painel.
-- Frontend Angular (tema escuro, tons de roxo e rosa) publicado como Static Site no Render.
+- Frontend Angular (tema escuro, tons de roxo e rosa; lista e quadro, barra lateral com filtros) publicado como Static Site no Render.
 - Endpoint `/api/health/` para health check e teste de conexão com o banco.
 - Script `scripts/testar-api.sh` com o teste documentado (curl).
 

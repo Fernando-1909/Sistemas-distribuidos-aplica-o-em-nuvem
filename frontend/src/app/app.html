@@ -1,90 +1,267 @@
-<main class="page">
-  <header class="top">
+<div class="shell">
+  <aside class="sidebar" [class.open]="navOpen()">
     <div class="brand">
-      <span class="orb" aria-hidden="true"></span>
-      <div>
-        <h1>nome legal</h1>
-        <p>Suas tarefas, no ritmo l e g a l.</p>
+      <span class="mark"><app-icon name="check" [size]="13" /></span>
+      Gerenciador
+    </div>
+
+    <button class="add" type="button" (click)="openNew()">
+      <span class="plus-circle"><app-icon name="plus" [size]="13" /></span>
+      Adicionar tarefa
+      <kbd>Q</kbd>
+    </button>
+
+    <nav class="nav" aria-label="Filtros">
+      @for (item of navItems; track item.key) {
+        <button
+          type="button"
+          class="nav-item"
+          [class.active]="filter() === item.key"
+          [attr.aria-current]="filter() === item.key ? 'page' : null"
+          (click)="setFilter(item.key)"
+        >
+          <app-icon [name]="item.icon" />
+          {{ item.label }}
+          <span class="count">{{ countOf(item.key) }}</span>
+        </button>
+      }
+    </nav>
+
+    @if (people().length) {
+      <h3 class="nav-title">Responsáveis</h3>
+      <nav class="nav" aria-label="Responsáveis">
+        @for (p of people(); track p.name) {
+          <button
+            type="button"
+            class="nav-item"
+            [class.active]="filter() === 'who:' + p.name"
+            (click)="filterWho(p.name)"
+          >
+            <span class="dot" [style.background]="color(p.name)"></span>
+            <span class="name">{{ p.name }}</span>
+            <span class="count">{{ p.count }}</span>
+          </button>
+        }
+      </nav>
+    }
+
+    <div class="foot">
+      <span>{{ counts().done }} de {{ counts().all }} concluídas</span>
+      <div class="bar" role="progressbar" [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
+        <span [style.width.%]="percent()"></span>
       </div>
     </div>
+  </aside>
 
-    <div class="tools">
-      <input
-        class="search"
-        type="search"
-        placeholder="Buscar tarefas"
-        aria-label="Buscar tarefas"
-        [ngModel]="search()"
-        (ngModelChange)="search.set($event)"
-      />
-      <button class="btn primary" type="button" (click)="openNew()">Nova tarefa</button>
-    </div>
-  </header>
+  <div class="scrim" [class.show]="navOpen()" (click)="navOpen.set(false)"></div>
 
-  <section class="progress" aria-label="Progresso geral">
-    <div class="progress-text">
-      <strong>{{ percent() }}%</strong>
-      <span>{{ doneCount() }} de {{ total() }} {{ total() === 1 ? 'tarefa concluída' : 'tarefas concluídas' }}</span>
-    </div>
-    <div class="bar" role="progressbar" [attr.aria-valuenow]="percent()" aria-valuemin="0" aria-valuemax="100">
-      <span [style.width.%]="percent()"></span>
-    </div>
-  </section>
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn menu" type="button" aria-label="Abrir menu" (click)="navOpen.set(true)">
+        <app-icon name="menu" [size]="18" />
+      </button>
 
-  @if (loadError()) {
-    <div class="banner" role="alert">
-      <p>{{ loadError() }}</p>
-      <button class="btn ghost" type="button" (click)="load()">Tentar de novo</button>
-    </div>
-  }
+      <label class="search">
+        <app-icon name="search" [size]="15" />
+        <input
+          id="search"
+          type="search"
+          placeholder="Buscar"
+          autocomplete="off"
+          [ngModel]="search()"
+          (ngModelChange)="search.set($event)"
+        />
+      </label>
 
-  @if (loading()) {
-    <p class="loading">
-      Carregando tarefas… na primeira visita do dia o servidor gratuito pode levar cerca de um minuto para acordar.
-    </p>
-  } @else {
-    <section class="board">
-      @for (col of columns; track col.status) {
-        <div class="column" [attr.data-status]="col.status">
-          <h2>
-            {{ col.label }}
-            <span class="count">{{ byStatus(col.status).length }}</span>
-          </h2>
+      <div class="seg" role="group" aria-label="Modo de exibição">
+        <button type="button" aria-label="Lista" [attr.aria-pressed]="view() === 'list'" (click)="view.set('list')">
+          <app-icon name="list" [size]="15" /> <span class="lbl">Lista</span>
+        </button>
+        <button type="button" aria-label="Quadro" [attr.aria-pressed]="view() === 'board'" (click)="view.set('board')">
+          <app-icon name="board" [size]="15" /> <span class="lbl">Quadro</span>
+        </button>
+      </div>
+    </header>
 
-          @for (task of byStatus(col.status); track task.id) {
-            <article class="card">
-              <h3>{{ task.title }}</h3>
-              @if (task.description) {
-                <p class="desc">{{ task.description }}</p>
-              }
+    <div class="scroll">
+      <div class="content" [class.wide]="view() === 'board'">
+        <h1>
+          {{ title() }}
+          <span class="sub">{{ visible().length }} {{ visible().length === 1 ? 'tarefa' : 'tarefas' }}</span>
+        </h1>
 
-              <div class="meta">
-                @if (task.responsible) {
-                  <span class="who">
-                    <span class="avatar" aria-hidden="true">{{ initials(task.responsible) }}</span>
-                    {{ task.responsible }}
-                  </span>
-                } @else {
-                  <span class="who none">Sem responsável</span>
+        @if (loadError()) {
+          <div class="banner" role="alert">
+            <p>{{ loadError() }}</p>
+            <button class="btn ghost" type="button" (click)="load()">Tentar de novo</button>
+          </div>
+        }
+
+        @if (loading()) {
+          <div class="skeleton" aria-hidden="true">
+            @for (w of [72, 55, 80, 48]; track $index) {
+              <div class="sk-row"><span class="sk-check"></span><span class="sk-line" [style.width.%]="w"></span></div>
+            }
+          </div>
+          <p class="hint">Carregando tarefas… na primeira visita do dia o servidor gratuito pode levar cerca de um minuto para acordar.</p>
+        } @else {
+          @if (view() === 'list') {
+            @for (s of sections(); track s.status) {
+              <section class="group">
+                @if (s.label) {
+                  <h2 class="group-title">{{ s.label }} <span>{{ s.tasks.length }}</span></h2>
                 }
-              </div>
+                <ul class="rows">
+                  @for (t of s.tasks; track t.id) {
+                    <li class="row" [class.done]="t.status === 'done'">
+                      <button
+                        type="button"
+                        class="check"
+                        [attr.data-status]="t.status"
+                        [attr.aria-label]="t.status === 'done' ? 'Reabrir tarefa' : 'Concluir tarefa'"
+                        (click)="toggle(t)"
+                      >
+                        <app-icon name="check" [size]="11" />
+                      </button>
 
-              <div class="card-actions">
-                <button class="btn small move" type="button" (click)="move(task)">
-                  {{ next[task.status].label }}
-                </button>
-                <button class="btn small ghost" type="button" (click)="openEdit(task)">Editar</button>
-                <button class="btn small ghost danger" type="button" (click)="remove(task)">Excluir</button>
+                      <button type="button" class="row-main" (click)="openEdit(t)">
+                        <span class="row-title">{{ t.title }}</span>
+                        @if (t.description) {
+                          <span class="row-desc">{{ t.description }}</span>
+                        }
+                      </button>
+
+                      @if (t.responsible) {
+                        <span class="who">
+                          <span class="avatar" [style.background]="color(t.responsible)">{{ initials(t.responsible) }}</span>
+                          <span class="who-name">{{ t.responsible }}</span>
+                        </span>
+                      }
+
+                      <span class="row-actions">
+                        @if (t.status === 'pending') {
+                          <button type="button" class="icon-btn" title="Iniciar" aria-label="Iniciar tarefa" (click)="start(t)">
+                            <app-icon name="play" [size]="14" />
+                          </button>
+                        }
+                        <button type="button" class="icon-btn" title="Editar" aria-label="Editar tarefa" (click)="openEdit(t)">
+                          <app-icon name="edit" [size]="14" />
+                        </button>
+                        <button type="button" class="icon-btn" title="Excluir" aria-label="Excluir tarefa" (click)="remove(t)">
+                          <app-icon name="trash" [size]="14" />
+                        </button>
+                      </span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            } @empty {
+              <div class="empty">
+                <strong>{{ emptyText()[0] }}</strong>
+                <span>{{ emptyText()[1] }}</span>
               </div>
-            </article>
-          } @empty {
-            <p class="empty">{{ search() ? 'Nenhuma tarefa encontrada.' : col.hint }}</p>
+            }
+
+            @if (canCompose()) {
+              @if (!composing()) {
+                <button type="button" class="add-row" (click)="openComposer()">
+                  <span class="plus-circle"><app-icon name="plus" [size]="13" /></span>
+                  Adicionar tarefa
+                </button>
+              } @else {
+                <form class="composer" (ngSubmit)="addDraft()" (keydown.escape)="composing.set(false)">
+                  <input
+                    #draftTitle
+                    name="title"
+                    class="c-title"
+                    placeholder="Nome da tarefa"
+                    maxlength="200"
+                    autocomplete="off"
+                    [(ngModel)]="draft.title"
+                  />
+                  <input
+                    name="description"
+                    class="c-desc"
+                    placeholder="Descrição"
+                    autocomplete="off"
+                    [(ngModel)]="draft.description"
+                  />
+                  <div class="c-foot">
+                    <input
+                      name="responsible"
+                      class="c-who"
+                      placeholder="Responsável"
+                      maxlength="100"
+                      autocomplete="off"
+                      [(ngModel)]="draft.responsible"
+                    />
+                    <span class="spacer"></span>
+                    <button type="button" class="btn ghost" (click)="composing.set(false)">Cancelar</button>
+                    <button type="submit" class="btn primary" [disabled]="!draft.title.trim()">Adicionar tarefa</button>
+                  </div>
+                </form>
+              }
+            }
+          } @else {
+            <div class="board">
+              @for (col of columns; track col.status) {
+                <section class="col">
+                  <h2 class="group-title">{{ col.label }} <span>{{ byStatus(col.status).length }}</span></h2>
+                  @for (t of byStatus(col.status); track t.id) {
+                    <article class="bcard" [class.done]="t.status === 'done'">
+                      <div class="bcard-top">
+                        <button
+                          type="button"
+                          class="check"
+                          [attr.data-status]="t.status"
+                          [attr.aria-label]="t.status === 'done' ? 'Reabrir tarefa' : 'Concluir tarefa'"
+                          (click)="toggle(t)"
+                        >
+                          <app-icon name="check" [size]="11" />
+                        </button>
+                        <button type="button" class="row-main" (click)="openEdit(t)">
+                          <span class="row-title">{{ t.title }}</span>
+                          @if (t.description) {
+                            <span class="bdesc">{{ t.description }}</span>
+                          }
+                        </button>
+                      </div>
+                      <div class="bcard-foot">
+                        @if (t.responsible) {
+                          <span class="who">
+                            <span class="avatar" [style.background]="color(t.responsible)">{{ initials(t.responsible) }}</span>
+                            <span class="who-name">{{ t.responsible }}</span>
+                          </span>
+                        } @else {
+                          <span class="who none">Sem responsável</span>
+                        }
+                        <span class="row-actions">
+                          @if (t.status === 'pending') {
+                            <button type="button" class="icon-btn" title="Iniciar" aria-label="Iniciar tarefa" (click)="start(t)">
+                              <app-icon name="play" [size]="14" />
+                            </button>
+                          }
+                          <button type="button" class="icon-btn" title="Editar" aria-label="Editar tarefa" (click)="openEdit(t)">
+                            <app-icon name="edit" [size]="14" />
+                          </button>
+                          <button type="button" class="icon-btn" title="Excluir" aria-label="Excluir tarefa" (click)="remove(t)">
+                            <app-icon name="trash" [size]="14" />
+                          </button>
+                        </span>
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="col-empty">Nada aqui.</p>
+                  }
+                </section>
+              }
+            </div>
           }
-        </div>
-      }
-    </section>
-  }
-</main>
+        }
+      </div>
+    </div>
+  </main>
+</div>
 
 @if (formOpen()) {
   <app-task-form

@@ -13,8 +13,8 @@ export interface Task {
 
 export type TaskInput = Pick<Task, 'title' | 'description' | 'status' | 'responsible'>;
 
-export const COLUMNS: { status: TaskStatus; label: string; hint: string }[] = [
-  { status: 'pending', label: 'A fazer', hint: 'Nada por aqui. Crie uma tarefa para começar.' },
-  { status: 'in_progress', label: 'Em andamento', hint: 'Mova uma tarefa para cá quando começar.' },
-  { status: 'done', label: 'Concluídas', hint: 'As tarefas finalizadas aparecem aqui.' },
+export const COLUMNS: { status: TaskStatus; label: string }[] = [
+  { status: 'pending', label: 'A fazer' },
+  { status: 'in_progress', label: 'Em andamento' },
+  { status: 'done', label: 'Concluídas' },
 ];

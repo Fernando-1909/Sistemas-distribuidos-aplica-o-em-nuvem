@@ -1,4 +1,4 @@
-# névoa — Gerenciador de tarefas distribuído
+# Gerenciador de tarefas distribuído
 
 Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC).
 Este repositório corresponde ao **Módulo 1 — Computação em Nuvem**: uma API REST com CRUD de tarefas, banco de dados hospedado e URL pública, mais um frontend Angular para usar a API.
