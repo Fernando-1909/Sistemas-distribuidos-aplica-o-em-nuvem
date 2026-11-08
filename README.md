@@ -1,234 +1,297 @@
 # Gerenciador de tarefas distribuído
 
-Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC).
-Este repositório corresponde ao **Módulo 1 — Computação em Nuvem**: uma API REST com CRUD de tarefas, banco de dados hospedado e URL pública, mais um frontend Angular para usar a API.
+Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). Este repositório está no **Módulo 2 — Serviços / Microsserviços**: a API do Módulo 1 foi decomposta em três microsserviços independentes, cada um com seu próprio banco de dados, que se comunicam por HTTP.
 
-- **Vídeo de demonstração:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
-- **Frontend (URL pública):** _[https://SEU-FRONTEND.onrender.com](https://tarefas-frontend-hn3e.onrender.com/)_
-- **API (URL pública):** _[https://SEU-BACKEND.onrender.com/api/](https://sistemas-distribuidos-aplica-o-em-nuvem.onrender.com/api/)_
+- **Vídeo do Módulo 1:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
+- **Frontend:** _https://https://tarefas-frontend-hn3e.onrender.com/_
+- **tasks-service:** _https://SEU-TASKS.onrender.com/api/_
+- **users-service:** _https://SEU-USERS.onrender.com/api/_
+- **projects-service:** _https://SEU-PROJECTS.onrender.com/api/_
 
-## Arquitetura (Módulo 1)
+## Arquitetura
 
-```
- Navegador ──► Frontend Angular ──► API Django (REST) ──► PostgreSQL
-              (Render · Static)     (Render · Web Service)   (Neon · free)
-```
+![Diagrama da arquitetura](docs/arquitetura.png)
 
-| Camada   | Tecnologia                              | Onde roda                  |
-|----------|-----------------------------------------|----------------------------|
-| Frontend | Angular 20 (tema escuro/claro)          | Render — Static Site       |
-| Backend  | Python + Django + Django REST Framework | Render — Web Service       |
-| Banco    | PostgreSQL                              | Neon — plano gratuito      |
+| Serviço | Responsabilidade | Banco (Neon) | Chama |
+|---|---|---|---|
+| `tasks-service` | Tarefas (título, status, prioridade, data, `responsible_id`, `project_id`) | `tasks_db` | users e projects |
+| `users-service` | Responsáveis (nome, e-mail) | `users_db` | ninguém |
+| `projects-service` | Projetos (nome, cor) | `projects_db` | ninguém |
+| Frontend (Angular) | Interface; chama os três serviços | — | os três |
 
-**Por que o PostgreSQL fica no Neon e não no Render?** O Render tem PostgreSQL gratuito, mas ele **expira 30 dias após a criação** (e depois é apagado). Como o projeto vai até a entrega do Módulo 4 e pode ser corrigido depois, usamos o Neon, que é gratuito, não pede cartão e não expira. O código lê uma única variável, `DATABASE_URL`, então trocar de provedor (Render Postgres, Aiven, Supabase...) é só trocar o valor dela, sem mexer no código.
+Tecnologias: Python + Django + Django REST Framework (os três serviços), PostgreSQL no Neon, Angular 20, Render (hospedagem).
 
 ### Estrutura de pastas
 
 ```
-backend/    API Django (config/, tasks/, build.sh, requirements.txt)
-frontend/   App Angular (src/app/, scripts/set-env.js)
-scripts/    testar-api.sh  → teste documentado com curl
-render.yaml Atalho opcional para criar os serviços no Render
+services/
+  tasks/      tasks-service    (Django: config/, tasks/, build.sh, requirements.txt)
+  users/      users-service    (Django: config/, members/, ...)
+  projects/   projects-service (Django: config/, projects/, ...)
+frontend/     App Angular (src/app/, scripts/set-env.js)
+docs/         arquitetura.svg e arquitetura.png
+scripts/      testar-api.sh e testar-microsservicos.sh (testes com curl)
+render.yaml   Atalho opcional para criar os serviços no Render
 ```
 
-## O frontend
+## Como os serviços se comunicam
 
-Lista de tarefas com visões **Hoje** (inclui atrasadas), **Em breve** (agrupadas por data) e **Todas**, filtros por status e por responsável, prioridades P1–P4 (a cor do círculo indica a prioridade), datas de entrega, alternância Lista/Quadro e tema escuro/claro (botão no rodapé da barra lateral). Atalhos: **Q** abre uma nova tarefa e **/** foca a busca.
+A tarefa guarda apenas **ids** (`responsible_id`, `project_id`). Como cada serviço tem seu banco, não existe chave estrangeira entre eles; o `tasks-service` consulta os outros por HTTP:
 
-## API
+- **Escrita (criar/editar tarefa com responsável ou projeto):** o `tasks-service` pergunta ao serviço dono do dado se o id existe (`GET /api/members/<id>/` ou `GET /api/projects/<id>/`). Se não existe, responde `400`.
+- **Leitura (listar tarefas):** o `tasks-service` busca os nomes **em lote** (`GET /api/members/?ids=1,2,3`), uma chamada por serviço e **em paralelo**, e devolve cada tarefa com `responsible` e `project` já preenchidos.
+- **Frontend:** usa o `tasks-service` para tarefas e fala direto com `users` e `projects` para o CRUD deles.
 
-| Método | Rota                         | O que faz                                   |
-|--------|------------------------------|---------------------------------------------|
-| GET    | `/api/health/`               | Testa a API e a conexão com o banco         |
-| GET    | `/api/tasks/`                | Lista tarefas (`?status=pending\|in_progress\|done`) |
-| POST   | `/api/tasks/`                | Cria uma tarefa                             |
-| GET    | `/api/tasks/<id>/`           | Detalha uma tarefa                          |
-| PUT/PATCH | `/api/tasks/<id>/`        | Atualiza uma tarefa                         |
-| DELETE | `/api/tasks/<id>/`           | Remove uma tarefa                           |
+### Tratamento de falhas (requisito do Módulo 2)
 
-Campos da tarefa: `title`, `description`, `status` (`pending`, `in_progress`, `done`), `responsible`, `priority` (1 = urgente ... 4 = baixa, padrão 4), `due_date` (formato `AAAA-MM-DD`, opcional), e os automáticos `id`, `created_at`, `updated_at` e `completed_at` (preenchido quando a tarefa vira `done` — será a base do evento "tarefa concluída" no Módulo 4).
+Toda chamada entre serviços tem timeout (`SERVICE_TIMEOUT`, em segundos). O comportamento quando um serviço dependente está fora do ar:
+
+| Situação | Resposta do tasks-service |
+|---|---|
+| Listar tarefas | Continua funcionando; o campo vem como `{"name": null, "state": "unavailable"}` e a interface mostra "indisponível" |
+| Criar/editar tarefa **com** `responsible_id` ou `project_id` | `503` com a mensagem "O serviço de responsáveis está indisponível no momento. Tente novamente em instantes." |
+| Criar tarefa sem responsável/projeto, editar o título, concluir, excluir | Funciona normalmente (não depende dos outros serviços) |
+| O id foi excluído no outro serviço | `{"name": null, "state": "removed"}` e a interface mostra "removido" |
+
+`GET /api/health/?deep=1` no `tasks-service` mostra o estado das dependências (`ok` ou `unavailable`).
+
+## APIs
+
+Todos os serviços têm `GET /api/health/` (testa o serviço e a conexão com o banco).
+
+**tasks-service**
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/api/tasks/` | Lista tarefas (`?status=`, `?responsible_id=`, `?project_id=`) |
+| POST | `/api/tasks/` | Cria tarefa |
+| GET / PUT / PATCH / DELETE | `/api/tasks/<id>/` | Detalha, atualiza ou remove |
+
+Campos: `title`, `description`, `status` (`pending`, `in_progress`, `done`), `priority` (1 = urgente ... 4 = baixa), `due_date` (`AAAA-MM-DD`), `responsible_id`, `project_id`; somente leitura: `responsible`, `project`, `created_at`, `updated_at` e `completed_at` (preenchido quando vira `done`, base do evento do Módulo 4).
+
+**users-service**: `GET/POST /api/members/`, `GET/PUT/PATCH/DELETE /api/members/<id>/`, filtro `?ids=1,2,3`. Campos: `name`, `email`.
+
+**projects-service**: `GET/POST /api/projects/`, `GET/PUT/PATCH/DELETE /api/projects/<id>/`, filtro `?ids=1,2,3`. Campos: `name`, `color` (`#RRGGBB`).
 
 ## Rodando localmente
 
-Requisitos: Python 3.12+ e Node 20.19+ (ou 22.12+).
+Requisitos: Python 3.12+ e Node 20.19+ (ou 22.12+). Sem `DATABASE_URL`, cada serviço usa o seu próprio arquivo SQLite (`db.sqlite3` dentro da pasta do serviço), então os bancos já ficam separados.
 
-**Backend** (usa SQLite automaticamente se `DATABASE_URL` não estiver definida e `DEBUG=True`):
+Crie um ambiente virtual único na raiz do projeto e instale as dependências (o `tasks-service` tem todas as bibliotecas dos três):
 
 ```bash
-cd backend
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-export DEBUG=True                  # Windows (PowerShell): $env:DEBUG="True"
-python manage.py migrate
-python manage.py runserver         # http://localhost:8000/api/
+pip install -r services/tasks/requirements.txt
 ```
 
-Para testar com o PostgreSQL do Neon localmente, defina também `DATABASE_URL` (veja `backend/.env.example`).
-
-**Frontend:**
+Depois abra **4 terminais**. Nos três primeiros, ative o ambiente virtual (`source .venv/bin/activate`) e defina `DEBUG=True` (`export DEBUG=True`; no PowerShell: `$env:DEBUG="True"`):
 
 ```bash
-cd frontend
-npm install
-npm start                          # http://localhost:4200
+# Terminal 1 - users-service (porta 8001)
+cd services/users && python manage.py migrate && python manage.py runserver 8001
+
+# Terminal 2 - projects-service (porta 8002)
+cd services/projects && python manage.py migrate && python manage.py runserver 8002
+
+# Terminal 3 - tasks-service (porta 8000)
+cd services/tasks && python manage.py migrate && python manage.py runserver 8000
+
+# Terminal 4 - frontend (http://localhost:4200)
+cd frontend && npm install && npm start
 ```
+
+Suba `users` e `projects` antes do `tasks`, ou ele vai tratá-los como indisponíveis até que respondam. Para usar o PostgreSQL do Neon localmente, defina `DATABASE_URL` em cada terminal (cada serviço com o **seu** banco).
+
+## Testando a comunicação entre os serviços
+
+Com os três serviços no ar (local ou na nuvem):
+
+```bash
+# local
+bash scripts/testar-microsservicos.sh
+
+# nuvem (URLs na ordem: tasks, users, projects)
+bash scripts/testar-microsservicos.sh https://SEU-TASKS.onrender.com https://SEU-USERS.onrender.com https://SEU-PROJECTS.onrender.com
+```
+
+O script faz o health check dos três serviços (o do `tasks` com `?deep=1`), cria um responsável e um projeto, cria uma tarefa que referencia os dois (o `tasks-service` valida os ids por HTTP), lista as tarefas com os nomes vindos dos outros serviços, confirma o erro `400` para um responsável inexistente, filtra por projeto e limpa os dados. No Windows, rode pelo Git Bash ou WSL. Tire **prints** da saída para a entrega.
+
+**Teste de falha (manual):** pare o `users-service` (local: `Ctrl+C`; Render: _Settings > Suspend Service_) e repita:
+
+1. Listar tarefas (`GET /api/tasks/`) continua funcionando, com `"responsible": {"name": null, "state": "unavailable"}`.
+2. Criar uma tarefa com `responsible_id` responde `503` com a mensagem amigável.
+3. Na interface aparece o aviso "Alguns nomes não puderam ser carregados…" e a barra lateral oferece "Tentar de novo".
+
+`scripts/testar-api.sh` continua disponível e testa só o CRUD do `tasks-service` (teste do Módulo 1).
 
 ---
 
 # Como hospedar no Render (passo a passo)
 
-Tudo abaixo é gratuito e **não exige cartão de crédito**. Os nomes de botões e menus dos sites podem mudar um pouco com o tempo, mas a lógica é a mesma.
+Tudo é gratuito e **não exige cartão**. Os nomes de botões e menus podem mudar um pouco com o tempo, mas a lógica é a mesma. Serão **4 serviços no Render** (3 Web Services + 1 Static Site) e **3 bancos no Neon**.
 
-Ordem: **GitHub → Neon (banco) → Render (backend) → Render (frontend) → ajuste de CORS**.
+Ordem: **GitHub → bancos no Neon → users → projects → tasks → frontend → CORS**. Os serviços `users` e `projects` vêm antes porque o `tasks` e o frontend precisam das URLs deles.
 
-## Passo 1 — Colocar o código no GitHub
+> **Já publicou o Módulo 1?** Você reaproveita o que existe: o Neon e o Web Service atuais viram o `tasks-service`, e o Static Site continua sendo o frontend. Veja as notas "Se você já tem o Módulo 1" nos Passos 2, 5 e 6.
 
-O Render faz o deploy puxando o código do GitHub, então o projeto precisa estar lá.
-
-1. Crie uma conta em <https://github.com> e um repositório novo (ex.: `tarefas-distribuidas`), **sem** README/.gitignore (o projeto já tem).
-2. Na pasta do projeto:
+## Passo 1 — Atualizar o GitHub
 
 ```bash
-git init
 git add .
-git commit -m "Módulo 1: API de tarefas + frontend"
-git branch -M main
-git remote add origin https://github.com/SEU_USUARIO/tarefas-distribuidas.git
-git push -u origin main
+git commit -m "Módulo 2: microsserviços (tasks, users, projects)"
+git push
 ```
 
-O `.gitignore` já impede que `.env`, `node_modules` e outros arquivos sensíveis ou pesados subam.
+## Passo 2 — Criar os bancos no Neon (um por serviço)
 
-## Passo 2 — Criar o banco PostgreSQL gratuito no Neon
+No <https://neon.com>, crie **3 projetos** (plano gratuito, sem cartão): `tasks`, `users` e `projects`. Em cada um, clique em **Connect**, **desative "Connection pooling"** e copie a connection string completa (`postgresql://USUARIO:SENHA@ep-xxxx.../neondb?sslmode=require`). Anote qual é de qual serviço: são **três `DATABASE_URL` diferentes**. Trate-as como senhas.
 
-1. Crie a conta em <https://neon.com> (login com GitHub, Google ou e-mail, sem cartão).
-2. **Create project**: dê um nome (ex.: `tarefas`), mantenha a versão do PostgreSQL sugerida e escolha uma região **próxima à do backend no Render** (ex.: Render em _Virginia (US East)_ → Neon em _AWS US East (N. Virginia)_). Isso reduz a latência.
-3. Na tela do projeto, clique em **Connect**. Em _Connection string_, **desative a opção "Connection pooling"** (conexão direta, a mais simples para o Django) e copie a string completa. Ela tem este formato:
+> **Se você já tem o Módulo 1:** o projeto Neon que você já usa é o do `tasks`; crie só os projetos `users` e `projects`.
 
-```
-postgresql://USUARIO:SENHA@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
-```
+Por que um projeto por serviço: o banco de cada microsserviço é isolado (credencial e dados separados), e nenhum serviço consegue ler as tabelas do outro.
 
-   Essa string inteira será o valor da variável **`DATABASE_URL`** no próximo passo. Trate-a como uma senha: não coloque no código nem no GitHub.
+## Passo 3 — Publicar o users-service
 
-> As tabelas **não** precisam ser criadas à mão: o comando `migrate`, executado no build do Render, cria tudo.
->
-> O Neon "suspende" o banco após alguns minutos sem uso e o reativa sozinho na próxima consulta (leva cerca de 1 segundo). Os dados não se perdem.
+Em <https://render.com>: **New + → Web Service** → escolha o repositório → **Connect**.
 
-**Quer usar outro PostgreSQL?** Qualquer um serve, basta colocar a connection string dele em `DATABASE_URL`:
-- **Render Postgres** (New + → PostgreSQL → plano Free): copie a _Internal Database URL_. Só pode haver **um** banco gratuito por conta, e ele **expira em 30 dias**.
-- **Aiven PostgreSQL** (plano Free, sem cartão e sem expiração): copie a _Service URI_. Em _Allowed IP addresses_ deixe `0.0.0.0/0`, porque o Render gratuito não tem IP fixo.
+| Campo | Valor |
+|---|---|
+| Name | `tarefas-users` |
+| Language | `Python 3` |
+| Branch | `main` |
+| Root Directory | `services/users` |
+| Build Command | `bash build.sh` |
+| Start Command | `gunicorn config.wsgi:application --workers 2` |
+| Instance Type | **Free** |
 
-## Passo 3 — Publicar o backend (Django) no Render
+Variáveis de ambiente:
 
-1. Crie a conta em <https://render.com> usando **Sign in with GitHub** e autorize o acesso ao repositório.
-2. **New + → Web Service** → escolha o repositório → **Connect**.
-3. Preencha:
+| Chave | Valor |
+|---|---|
+| `PYTHON_VERSION` | `3.12.8` |
+| `DEBUG` | `False` |
+| `SECRET_KEY` | string longa e aleatória (`python -c "import secrets; print(secrets.token_urlsafe(50))"`) |
+| `DATABASE_URL` | a connection string do Neon do projeto `users` |
+| `CORS_ALLOWED_ORIGINS` | por enquanto `http://localhost:4200` (ajustamos no Passo 7) |
 
-| Campo             | Valor                                  |
-|-------------------|----------------------------------------|
-| Name              | `tarefas-api` (vira parte da URL)      |
-| Language          | `Python 3`                             |
-| Branch            | `main`                                 |
-| Root Directory    | `backend`                              |
-| Build Command     | `bash build.sh`                        |
-| Start Command     | `gunicorn config.wsgi:application`     |
-| Instance Type     | **Free**                               |
+Em _Advanced_, **Health Check Path**: `/api/health/`. Clique em **Create Web Service** e espere ficar **Live**. Teste `https://SUA-URL-USERS.onrender.com/api/health/`: deve mostrar `"service":"users"` e `"database":"postgresql"`. **Anote a URL.**
 
-4. Em **Environment Variables** (ou _Advanced → Add Environment Variable_), adicione:
+## Passo 4 — Publicar o projects-service
 
-| Chave                  | Valor                                                                 |
-|------------------------|-----------------------------------------------------------------------|
-| `PYTHON_VERSION`       | `3.12.8`                                                              |
-| `DEBUG`                | `False`                                                               |
-| `SECRET_KEY`           | uma string longa e aleatória (gere com `python -c "import secrets; print(secrets.token_urlsafe(50))"`) |
-| `DATABASE_URL`         | a connection string do Neon (Passo 2), inteira                        |
-| `CORS_ALLOWED_ORIGINS` | por enquanto `http://localhost:4200` (ajustamos no Passo 5)           |
+Igual ao passo anterior, mudando:
 
-   Em _Advanced_, defina **Health Check Path** como `/api/health/`.
+| Campo | Valor |
+|---|---|
+| Name | `tarefas-projects` |
+| Root Directory | `services/projects` |
+| `DATABASE_URL` | a connection string do Neon do projeto `projects` |
 
-5. Clique em **Create Web Service**. Acompanhe os logs: o build instala as dependências, roda `collectstatic` e `migrate` (cria as tabelas no Neon) e inicia o `gunicorn`. Quando aparecer **Live**, anote a URL (ex.: `https://tarefas-api.onrender.com`).
-6. Teste no navegador: `https://tarefas-api.onrender.com/api/health/` deve mostrar `{"status":"ok","database":"postgresql"}`. Se aparecer `postgresql`, a API está conectada ao banco do Neon.
+Teste `/api/health/` (deve mostrar `"service":"projects"`) e **anote a URL**.
 
-> **Por que o `migrate` está no build?** O _Pre-Deploy Command_ do Render (onde normalmente ficariam as migrações) é recurso de plano pago. Colocar no `build.sh` funciona igual no plano gratuito.
+## Passo 5 — Publicar o tasks-service
 
-## Passo 4 — Publicar o frontend (Angular) no Render
+**Criando do zero:** **New + → Web Service**, mesmo repositório:
 
-1. **New + → Static Site** → mesmo repositório → **Connect**.
-2. Preencha:
+| Campo | Valor |
+|---|---|
+| Name | `tarefas-api` |
+| Root Directory | `services/tasks` |
+| Build Command | `bash build.sh` |
+| Start Command | `gunicorn config.wsgi:application --workers 2 --timeout 60` |
+| Instance Type | **Free** |
 
-| Campo              | Valor                          |
-|--------------------|--------------------------------|
-| Name               | `tarefas-frontend`             |
-| Branch             | `main`                         |
-| Root Directory     | `frontend`                     |
-| Build Command      | `npm ci && npm run build`      |
-| Publish Directory  | `dist/frontend/browser`        |
+**Se você já tem o Módulo 1:** abra o serviço `tarefas-api` existente → _Settings_ e altere **Root Directory** de `backend` para `services/tasks` e o **Start Command** para o valor acima. O `DATABASE_URL` continua o mesmo. Atenção: a migration deste módulo remove o campo antigo `responsible` (texto), então o nome do responsável das tarefas antigas é descartado.
 
-3. Em **Environment Variables**:
+Variáveis de ambiente (as marcadas com ★ são novas neste módulo):
 
-| Chave          | Valor                                              |
-|----------------|----------------------------------------------------|
-| `NODE_VERSION` | `22.12.0`                                          |
-| `API_URL`      | `https://tarefas-api.onrender.com/api` (a URL do **seu** backend, terminando em `/api`, sem barra no final) |
+| Chave | Valor |
+|---|---|
+| `PYTHON_VERSION` | `3.12.8` |
+| `DEBUG` | `False` |
+| `SECRET_KEY` | string longa e aleatória |
+| `DATABASE_URL` | a connection string do Neon do projeto `tasks` |
+| `CORS_ALLOWED_ORIGINS` | por enquanto `http://localhost:4200` |
+| ★ `USERS_SERVICE_URL` | URL do users-service, **sem `/api` e sem barra no final** (ex.: `https://tarefas-users.onrender.com`) |
+| ★ `PROJECTS_SERVICE_URL` | URL do projects-service, no mesmo formato |
+| ★ `SERVICE_TIMEOUT` | `10` (segundos de espera por outro serviço) |
 
-   O script `scripts/set-env.js` lê `API_URL` antes do build e grava no código do Angular — assim nenhuma URL fica fixa no repositório.
+**Health Check Path**: `/api/health/`. Quando ficar **Live**, teste `https://SUA-URL-TASKS.onrender.com/api/health/?deep=1`: deve mostrar `"users":"ok"` e `"projects":"ok"`. Se mostrar `unavailable`, confira as duas URLs (e se os serviços estão acordados: veja "Plano gratuito" abaixo).
 
-4. **Create Static Site** e aguarde o deploy. Anote a URL (ex.: `https://tarefas-frontend.onrender.com`).
+## Passo 6 — Atualizar o frontend
 
-## Passo 5 — Liberar o frontend no CORS do backend
+O frontend agora precisa das três URLs. No Static Site (`tarefas-frontend`; crie um novo, se ainda não tiver, como no Módulo 1: Root Directory `frontend`, Build Command `npm ci && npm run build`, Publish Directory `dist/frontend/browser`), em _Environment_:
 
-O navegador só deixa o frontend chamar a API se o backend permitir a origem dele.
+| Chave | Valor |
+|---|---|
+| `NODE_VERSION` | `22.12.0` |
+| `TASKS_API_URL` | `https://SUA-URL-TASKS.onrender.com/api` |
+| `USERS_API_URL` | `https://SUA-URL-USERS.onrender.com/api` |
+| `PROJECTS_API_URL` | `https://SUA-URL-PROJECTS.onrender.com/api` |
 
-1. No Render, abra o serviço **tarefas-api → Environment**.
-2. Altere `CORS_ALLOWED_ORIGINS` para a URL do frontend, **sem barra no final**: `https://tarefas-frontend.onrender.com`.
-3. Salve. O Render reinicia o serviço sozinho.
-4. Abra o frontend: já deve listar e criar tarefas. 🎉
+Aqui **as URLs terminam em `/api`**, ao contrário das do Passo 5. **Se você já tem o Módulo 1:** a antiga `API_URL` vira `TASKS_API_URL` (a `API_URL` ainda funciona como alternativa, mas use o nome novo) e você adiciona as outras duas. Depois faça **Manual Deploy → Clear build cache & deploy**, porque as URLs são gravadas no código durante o build. Anote a URL do frontend.
 
-## Passo 6 — Testar a API publicamente (evidência para a entrega)
+## Passo 7 — Liberar o frontend no CORS
 
-```bash
-bash scripts/testar-api.sh https://tarefas-api.onrender.com
-```
+Nos **três** Web Services (`users`, `projects` e `tasks`), em _Environment_, altere `CORS_ALLOWED_ORIGINS` para a URL do frontend, **sem barra no final** (ex.: `https://tarefas-frontend.onrender.com`). O Render reinicia cada serviço sozinho.
 
-O script faz health check, cria, lista, atualiza, filtra, deleta e valida um erro 400. Tire **prints** da saída (ou use Postman com as mesmas rotas) — é o "teste documentado" que o trabalho pede. No Windows, rode o script pelo Git Bash ou WSL.
+## Passo 8 — Testar
+
+1. Abra o frontend: crie um projeto e um responsável pela barra lateral e depois uma tarefa escolhendo os dois.
+2. Rode `bash scripts/testar-microsservicos.sh URL_TASKS URL_USERS URL_PROJECTS` e tire prints.
+3. Faça o teste de falha (suspenda o `users-service` e veja o comportamento descrito acima).
 
 ## Atalho opcional: Blueprint (`render.yaml`)
 
-O arquivo `render.yaml` da raiz descreve os dois serviços. Em **New + → Blueprint**, selecione o repositório e o Render cria tudo, pedindo apenas os valores marcados como secretos (`DATABASE_URL`, `CORS_ALLOWED_ORIGINS`, `API_URL`). Como a URL do backend só existe depois que ele é criado, você ainda precisará preencher `API_URL` e `CORS_ALLOWED_ORIGINS` e fazer um novo deploy. Os serviços usam o plano gratuito; confira na tela de confirmação se nenhum aparece com valor mensal antes de aceitar.
+O `render.yaml` da raiz descreve os 4 serviços. Em **New + → Blueprint**, selecione o repositório e o Render cria tudo, pedindo os valores marcados como secretos (`DATABASE_URL` de cada serviço, `CORS_ALLOWED_ORIGINS`, as URLs dos serviços). Como as URLs só existem depois que os serviços são criados, você terá de preencher `USERS_SERVICE_URL`, `PROJECTS_SERVICE_URL`, as três `*_API_URL` e o CORS e fazer um novo deploy. Os serviços usam o plano gratuito; confira na tela de confirmação se nenhum aparece com valor mensal.
 
 ---
 
 ## Limitações do plano gratuito (importante para a demonstração)
 
-- **O backend "dorme"** após ~15 minutos sem receber requisições. A primeira chamada depois disso pode levar cerca de 1 minuto. O frontend avisa isso na tela de carregamento. **Antes de gravar o vídeo ou apresentar, abra a URL do `/api/health/` e espere responder.**
-- **O banco do Neon** é suspenso quando fica sem uso e reativa sozinho na próxima consulta; os dados ficam preservados. Se você optar pelo PostgreSQL do **Render**, lembre que ele expira em 30 dias.
-- O plano gratuito do Render tem limite de horas mensais de instância; para um trabalho de faculdade é suficiente.
-- Nunca coloque senhas ou a `SECRET_KEY` no código: tudo está em variáveis de ambiente, configuradas no painel (requisito do Módulo 1).
+- **Cada serviço dorme sozinho** após ~15 minutos sem requisições e leva cerca de 1 minuto para acordar. Com 3 serviços, a **primeira requisição do dia pode ser lenta ou mostrar "indisponível"** para os nomes, porque o `tasks-service` espera no máximo `SERVICE_TIMEOUT` segundos por cada serviço dependente. **Antes de gravar ou apresentar, acorde os três**: abra `/api/health/` de `users` e `projects` e o `/api/health/?deep=1` de `tasks`. Se quiser que a primeira carga espere o serviço acordar em vez de mostrar "indisponível", aumente `SERVICE_TIMEOUT` (por exemplo para `45`; o `--timeout 60` do gunicorn já comporta isso).
+- **Os serviços se chamam pelas URLs públicas** (`https://...onrender.com`): serviços web gratuitos do Render não recebem tráfego da rede privada.
+- **Horas:** o Render dá 750 horas gratuitas por mês, somadas entre os serviços web; serviços dormindo não consomem horas. Não use "pings" para mantê-los acordados 24 horas.
+- **Banco:** o Neon gratuito suspende o banco quando fica sem uso e reativa sozinho na consulta seguinte (cerca de 1 segundo). Os dados ficam preservados.
+- Nunca coloque senhas ou a `SECRET_KEY` no código: tudo está em variáveis de ambiente, configuradas no painel.
 
 ## Problemas comuns
 
 | Sintoma | Causa provável e solução |
-|---------|--------------------------|
-| Build do backend falha em `migrate` com erro de conexão | `DATABASE_URL` copiada incompleta ou com a opção de pooling/senha errada (copie de novo no Neon). Corrija em _Environment_ e use **Manual Deploy → Deploy latest commit**. |
-| `DisallowedHost` ou `Bad Request (400)` ao abrir a API | O host não está permitido. No Render isso é automático; se usar domínio próprio, defina `ALLOWED_HOSTS`. |
-| Frontend carrega, mas mostra erro de API / console com "CORS" | `CORS_ALLOWED_ORIGINS` diferente da URL real do frontend (confira `https`, sem barra final). |
-| Frontend chama `localhost:8000` em produção | `API_URL` não foi definida **antes** do build. Defina e faça **Clear build cache & deploy**. |
-| `/api/health/` responde `sqlite` | `DATABASE_URL` não está definida no ambiente de produção. |
-| Build do frontend falha por versão do Node | Confirme `NODE_VERSION=22.12.0` (ou superior na linha 22). |
+|---|---|
+| `/api/health/?deep=1` mostra `unavailable` | `USERS_SERVICE_URL`/`PROJECTS_SERVICE_URL` incorretas (sem `https://`, com `/api` no final) ou o serviço está dormindo. Acorde-o abrindo o `/api/health/` dele. |
+| Nomes aparecem como "indisponível" logo após acordar | Normal no plano gratuito (partida a frio). Clique em "Atualizar" em alguns segundos, ou aumente `SERVICE_TIMEOUT`. |
+| Build do serviço falha em `migrate` | `DATABASE_URL` errada ou copiada com pooling. Copie de novo no Neon. Cada serviço precisa da **sua** string. |
+| Frontend carrega mas dá erro de CORS | `CORS_ALLOWED_ORIGINS` diferente da URL real do frontend em **algum** dos 3 serviços (confira `https` e a ausência de barra no final). |
+| Frontend chama `localhost` em produção | As variáveis `*_API_URL` não estavam definidas no build. Defina e faça **Clear build cache & deploy**. |
+| Tarefas antigas perderam o responsável | Esperado: a migration `0003` troca o campo texto `responsible` por `responsible_id`. Reatribua pela interface. |
+| `/api/health/` responde `sqlite` | `DATABASE_URL` não está definida naquele serviço. |
 
-## Checklist de entrega — Módulo 1
+## Justificativas técnicas
 
-- [ ] Repositório Git com código-fonte e este `README.md`
-- [ ] URL pública da API e do frontend no topo do README
-- [ ] Variáveis de ambiente configuradas no painel (sem segredos no código)
-- [ ] Prints ou saída do `scripts/testar-api.sh` rodando contra a URL pública
-- [ ] Vídeo curto no YouTube (**não listado**) com o link no README
-- [ ] Tag do Git para a entrega: `git tag entrega-1-cloud && git push origin entrega-1-cloud`
+| Decisão | Por quê |
+|---|---|
+| Dividir em tarefas, responsáveis e projetos | Contextos de negócio distintos, com dados e ciclo de vida próprios; cada um pode mudar, escalar e falhar de forma independente |
+| Um banco (um projeto Neon) por serviço | Isolamento de dados: nenhum serviço lê as tabelas do outro; a integração acontece só pela API |
+| Ids em vez de chaves estrangeiras entre serviços | Bancos separados não permitem FK; a consistência é garantida pelas chamadas HTTP (validação na escrita e estado `removed` na leitura) |
+| HTTP/REST síncrono entre serviços | Exigido pelo Módulo 2 e simples de testar; a comunicação assíncrona entra no Módulo 4 |
+| Consulta em lote (`?ids=`) e em paralelo | Evita uma chamada por tarefa (problema N+1) e reduz a latência de cada listagem |
+| Timeout e resposta degradada | Um serviço fora do ar não derruba os demais: a leitura continua e a escrita falha com mensagem clara |
+| Mesma stack (Django REST) nos três serviços | Reaproveita o código do Módulo 1 e mantém o projeto simples de manter e de containerizar no Módulo 3 |
+| Neon + Render | Planos gratuitos sem cartão; deploy a partir do Git; o PostgreSQL gratuito do Render expira em 30 dias |
+
+## Checklist de entrega — Módulo 2
+
+- [ ] Repositório atualizado, com uma pasta por serviço (`services/tasks`, `services/users`, `services/projects`)
+- [ ] 3 serviços publicados no Render, cada um com seu banco, e frontend atualizado
+- [ ] Diagrama da arquitetura (`docs/arquitetura.png`) e URLs públicas no topo deste README
+- [ ] Prints ou saída do `scripts/testar-microsservicos.sh` contra as URLs públicas
+- [ ] Teste de falha documentado (print com um serviço suspenso)
 - [ ] `CHANGELOG.md` atualizado
+- [ ] Tag da entrega: `git tag entrega-2-microsservicos && git push origin entrega-2-microsservicos`
 
-## Próximos módulos
+## Histórico e próximos módulos
 
-Este repositório já está organizado para evoluir: no **Módulo 2** o backend será dividido em pelo menos três microsserviços, no **Módulo 3** cada um ganhará um `Dockerfile` e haverá um `docker-compose.yml`, e no **Módulo 4** o evento "tarefa concluída" será publicado no RabbitMQ.
+- **Módulo 1 (Computação em Nuvem):** tag `entrega-1-cloud`, com a API única publicada no Render.
+- **Módulo 3 (Containers):** cada serviço ganhará um `Dockerfile` e haverá um `docker-compose.yml` com os serviços e os bancos.
+- **Módulo 4 (Mensageria):** o `tasks-service` publicará o evento "tarefa concluída" no RabbitMQ (o campo `completed_at` já existe) e um serviço consumidor confirmará o recebimento.

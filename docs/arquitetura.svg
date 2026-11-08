@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 930 560" width="930" height="560" font-family="Inter, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5e4b5a"/>
+    </marker>
+    <marker id="setaMarca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#d3366a"/>
+    </marker>
+  </defs>
+  <rect width="930" height="560" fill="#fffaf6"/>
+  <text x="30" y="34" font-size="18" font-weight="700" fill="#2b1d29">Arquitetura do Módulo 2 · Microsserviços</text>
+
+  <!-- Frontend -->
+  <rect x="30" y="215" width="180" height="100" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="120" y="259" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">Frontend</text>
+  <text x="120" y="278" text-anchor="middle" font-size="12" fill="#6b5a68">Angular</text>
+  <text x="120" y="295" text-anchor="middle" font-size="11" fill="#6b5a68">Render · Static Site</text>
+
+  <!-- Serviços -->
+  <rect x="380" y="60" width="220" height="90" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="490" y="97" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">users-service</text>
+  <text x="490" y="117" text-anchor="middle" font-size="12" fill="#6b5a68">Responsáveis · Django REST</text>
+  <text x="490" y="134" text-anchor="middle" font-size="11" fill="#6b5a68">Render · Web Service</text>
+
+  <rect x="380" y="220" width="220" height="90" rx="12" fill="#ffffff" stroke="#d3366a" stroke-width="3"/>
+  <text x="490" y="257" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">tasks-service</text>
+  <text x="490" y="277" text-anchor="middle" font-size="12" fill="#6b5a68">Tarefas · Django REST</text>
+  <text x="490" y="294" text-anchor="middle" font-size="11" fill="#6b5a68">Render · Web Service</text>
+
+  <rect x="380" y="380" width="220" height="90" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="490" y="417" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">projects-service</text>
+  <text x="490" y="437" text-anchor="middle" font-size="12" fill="#6b5a68">Projetos · Django REST</text>
+  <text x="490" y="454" text-anchor="middle" font-size="11" fill="#6b5a68">Render · Web Service</text>
+
+  <!-- Bancos (um por serviço) -->
+  <g fill="#ffffff" stroke="#2b1d29" stroke-width="2">
+    <path d="M730 85 v60 a80 12 0 0 0 160 0 v-60"/><ellipse cx="810" cy="85" rx="80" ry="12"/>
+    <path d="M730 245 v60 a80 12 0 0 0 160 0 v-60"/><ellipse cx="810" cy="245" rx="80" ry="12"/>
+    <path d="M730 405 v60 a80 12 0 0 0 160 0 v-60"/><ellipse cx="810" cy="405" rx="80" ry="12"/>
+  </g>
+  <g text-anchor="middle" fill="#2b1d29">
+    <text x="810" y="122" font-size="13" font-weight="700">users_db</text><text x="810" y="139" font-size="11" fill="#6b5a68">Neon · PostgreSQL</text>
+    <text x="810" y="282" font-size="13" font-weight="700">tasks_db</text><text x="810" y="299" font-size="11" fill="#6b5a68">Neon · PostgreSQL</text>
+    <text x="810" y="442" font-size="13" font-weight="700">projects_db</text><text x="810" y="459" font-size="11" fill="#6b5a68">Neon · PostgreSQL</text>
+  </g>
+
+  <!-- Frontend -> serviços (HTTPS/REST) -->
+  <g fill="none" stroke="#5e4b5a" stroke-width="2" marker-end="url(#seta)">
+    <path d="M210 265 H378" stroke="#d3366a" marker-end="url(#setaMarca)"/>
+    <path d="M210 240 H250 V105 H378"/>
+    <path d="M210 290 H250 V425 H378"/>
+  </g>
+  <g font-size="11" fill="#5e4b5a">
+    <text x="258" y="258">tarefas</text>
+    <text x="258" y="98">responsáveis</text>
+    <text x="258" y="418">projetos</text>
+  </g>
+
+  <!-- tasks -> users / projects (HTTP síncrono) -->
+  <g fill="none" stroke="#d3366a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#setaMarca)">
+    <path d="M490 220 V152"/>
+    <path d="M490 310 V378"/>
+  </g>
+  <g font-size="11" fill="#d3366a">
+    <text x="500" y="182">GET /members/?ids=…</text>
+    <text x="500" y="348">GET /projects/?ids=…</text>
+  </g>
+
+  <!-- serviço -> seu banco (SQL) -->
+  <g fill="none" stroke="#5e4b5a" stroke-width="2" marker-end="url(#seta)">
+    <path d="M600 105 H728"/>
+    <path d="M600 265 H728"/>
+    <path d="M600 425 H728"/>
+  </g>
+  <g font-size="11" fill="#5e4b5a" text-anchor="middle">
+    <text x="664" y="98">SQL</text><text x="664" y="258">SQL</text><text x="664" y="418">SQL</text>
+  </g>
+
+  <!-- Legenda -->
+  <g font-size="12" fill="#5e4b5a">
+    <line x1="30" y1="510" x2="70" y2="510" stroke="#5e4b5a" stroke-width="2" marker-end="url(#seta)"/>
+    <text x="80" y="514">REST/JSON (HTTPS) ou SQL</text>
+    <line x1="290" y1="510" x2="330" y2="510" stroke="#d3366a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#setaMarca)"/>
+    <text x="340" y="514">HTTP síncrono entre serviços (com timeout)</text>
+    <text x="30" y="538">Cada serviço acessa somente o seu próprio banco. Referências entre serviços são ids, sem chave estrangeira.</text>
+  </g>
+</svg>

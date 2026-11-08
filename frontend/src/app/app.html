@@ -33,18 +33,55 @@
       }
     </nav>
 
-    @if (people().length) {
-      <h3 class="nav-title">Responsáveis</h3>
-      <nav class="nav" aria-label="Responsáveis">
-        @for (p of people(); track p.name) {
-          <button type="button" class="nav-item" [class.active]="filter() === 'who:' + p.name" (click)="filterWho(p.name)">
-            <span class="avatar sm">{{ initials(p.name) }}</span>
-            <span class="name">{{ p.name }}</span>
-            <span class="count">{{ p.count }}</span>
-          </button>
-        }
-      </nav>
+    <div class="nav-head">
+      <h3 class="nav-title">Projetos</h3>
+      <button type="button" class="icon-btn sm" title="Adicionar projeto" aria-label="Adicionar projeto" (click)="startAdd('project')"><app-icon name="plus" [size]="14" /></button>
+    </div>
+    @if (adding() === 'project') {
+      <form class="mini-add" (ngSubmit)="confirmAdd()" (keydown.escape)="adding.set(null)">
+        <input id="mini-add" name="newName" placeholder="Nome do projeto" maxlength="100" autocomplete="off" [(ngModel)]="newName" (blur)="adding.set(null)" />
+      </form>
     }
+    @if (projectsDown()) {
+      <p class="side-note">Serviço de projetos indisponível. <button type="button" class="link" (click)="loadProjects()">Tentar de novo</button></p>
+    }
+    <nav class="nav" aria-label="Projetos">
+      @for (p of projects(); track p.id) {
+        <div class="nav-row">
+          <button type="button" class="nav-item" [class.active]="filter() === 'project:' + p.id" (click)="filterProject(p.id)">
+            <span class="dot" [style.background]="p.color"></span>
+            <span class="name">{{ p.name }}</span>
+            <span class="count">{{ projectCounts().get(p.id) || '' }}</span>
+          </button>
+          <button type="button" class="icon-btn sm del" title="Excluir projeto" aria-label="Excluir projeto" (click)="removeProject(p)"><app-icon name="trash" [size]="13" /></button>
+        </div>
+      }
+    </nav>
+
+    <div class="nav-head">
+      <h3 class="nav-title">Responsáveis</h3>
+      <button type="button" class="icon-btn sm" title="Adicionar responsável" aria-label="Adicionar responsável" (click)="startAdd('member')"><app-icon name="plus" [size]="14" /></button>
+    </div>
+    @if (adding() === 'member') {
+      <form class="mini-add" (ngSubmit)="confirmAdd()" (keydown.escape)="adding.set(null)">
+        <input id="mini-add" name="newName" placeholder="Nome do responsável" maxlength="100" autocomplete="off" [(ngModel)]="newName" (blur)="adding.set(null)" />
+      </form>
+    }
+    @if (membersDown()) {
+      <p class="side-note">Serviço de responsáveis indisponível. <button type="button" class="link" (click)="loadMembers()">Tentar de novo</button></p>
+    }
+    <nav class="nav" aria-label="Responsáveis">
+      @for (m of members(); track m.id) {
+        <div class="nav-row">
+          <button type="button" class="nav-item" [class.active]="filter() === 'who:' + m.id" (click)="filterWho(m.id)">
+            <span class="avatar sm">{{ initials(m.name) }}</span>
+            <span class="name">{{ m.name }}</span>
+            <span class="count">{{ memberCounts().get(m.id) || '' }}</span>
+          </button>
+          <button type="button" class="icon-btn sm del" title="Excluir responsável" aria-label="Excluir responsável" (click)="removeMember(m)"><app-icon name="trash" [size]="13" /></button>
+        </div>
+      }
+    </nav>
 
     <div class="foot">
       <div class="progress-text">
@@ -106,6 +143,13 @@
           </div>
         }
 
+        @if (degraded()) {
+          <div class="banner" role="status">
+            <p>Alguns nomes não puderam ser carregados porque o serviço de responsáveis ou de projetos está indisponível. As tarefas continuam funcionando.</p>
+            <button class="btn ghost" type="button" (click)="load()">Atualizar</button>
+          </div>
+        }
+
         @if (loading()) {
           <div class="skeleton" aria-hidden="true">
             @for (w of [72, 55, 80, 48]; track $index) {
@@ -143,17 +187,26 @@
                         @if (t.description) {
                           <span class="row-desc">{{ t.description }}</span>
                         }
-                        @if (t.due_date) {
-                          <span class="due" [attr.data-tone]="dueInfo(t.due_date, today()).tone">
-                            <app-icon name="calendar" [size]="12" /> {{ dueInfo(t.due_date, today()).label }}
+                        @if (t.due_date || t.project) {
+                          <span class="meta">
+                            @if (t.due_date) {
+                              <span class="due" [attr.data-tone]="dueInfo(t.due_date, today()).tone">
+                                <app-icon name="calendar" [size]="12" /> {{ dueInfo(t.due_date, today()).label }}
+                              </span>
+                            }
+                            @if (t.project) {
+                              <span class="proj" [attr.data-state]="t.project.state">
+                                <span class="dot" [style.background]="t.project.color || null"></span>{{ refLabel(t.project, 'projeto') }}
+                              </span>
+                            }
                           </span>
                         }
                       </button>
 
                       @if (t.responsible) {
-                        <span class="who" [title]="t.responsible">
-                          <span class="avatar">{{ initials(t.responsible) }}</span>
-                          <span class="who-name">{{ t.responsible }}</span>
+                        <span class="who" [attr.data-state]="t.responsible.state" [title]="refLabel(t.responsible, 'responsável')">
+                          <span class="avatar">{{ avatar(t.responsible) }}</span>
+                          <span class="who-name">{{ refLabel(t.responsible, 'responsável') }}</span>
                         </span>
                       }
 
@@ -195,8 +248,18 @@
                       <input type="date" name="due" aria-label="Data de entrega" [(ngModel)]="draft.due_date" />
                     </label>
                     <app-priority [(value)]="draft.priority" />
-                    <input name="responsible" class="chip who-in" placeholder="Responsável" maxlength="100" autocomplete="off" [(ngModel)]="draft.responsible" />
+                    <select class="chip sel" name="resp" aria-label="Responsável" [(ngModel)]="draft.responsible_id">
+                      <option [ngValue]="null">Responsável</option>
+                      @for (m of members(); track m.id) { <option [ngValue]="m.id">{{ m.name }}</option> }
+                    </select>
+                    <select class="chip sel" name="proj" aria-label="Projeto" [(ngModel)]="draft.project_id">
+                      <option [ngValue]="null">Projeto</option>
+                      @for (p of projects(); track p.id) { <option [ngValue]="p.id">{{ p.name }}</option> }
+                    </select>
                   </div>
+                  @if (composerError()) {
+                    <p class="c-error" role="alert">{{ composerError() }}</p>
+                  }
                   <div class="c-foot">
                     <button type="button" class="btn ghost" (click)="composing.set(false)">Cancelar</button>
                     <button type="submit" class="btn primary" [disabled]="!draft.title.trim()">Adicionar tarefa</button>
@@ -218,14 +281,21 @@
                         <button type="button" class="row-main" (click)="openEdit(t)">
                           <span class="row-title">{{ t.title }}</span>
                           @if (t.description) { <span class="bdesc">{{ t.description }}</span> }
-                          @if (t.due_date) {
-                            <span class="due" [attr.data-tone]="dueInfo(t.due_date, today()).tone"><app-icon name="calendar" [size]="12" /> {{ dueInfo(t.due_date, today()).label }}</span>
+                          @if (t.due_date || t.project) {
+                            <span class="meta">
+                              @if (t.due_date) {
+                                <span class="due" [attr.data-tone]="dueInfo(t.due_date, today()).tone"><app-icon name="calendar" [size]="12" /> {{ dueInfo(t.due_date, today()).label }}</span>
+                              }
+                              @if (t.project) {
+                                <span class="proj" [attr.data-state]="t.project.state"><span class="dot" [style.background]="t.project.color || null"></span>{{ refLabel(t.project, 'projeto') }}</span>
+                              }
+                            </span>
                           }
                         </button>
                       </div>
                       <div class="bcard-foot">
                         @if (t.responsible) {
-                          <span class="who"><span class="avatar">{{ initials(t.responsible) }}</span><span class="who-name">{{ t.responsible }}</span></span>
+                          <span class="who" [attr.data-state]="t.responsible.state"><span class="avatar">{{ avatar(t.responsible) }}</span><span class="who-name">{{ refLabel(t.responsible, 'responsável') }}</span></span>
                         } @else {
                           <span class="who none">Sem responsável</span>
                         }
@@ -252,5 +322,5 @@
 </div>
 
 @if (formOpen()) {
-  <app-task-form [task]="editing()" [saving]="saving()" [error]="formError()" (save)="save($event)" (cancel)="closeForm()" />
+  <app-task-form [task]="editing()" [members]="members()" [projects]="projects()" [saving]="saving()" [error]="formError()" (save)="save($event)" (cancel)="closeForm()" />
 }

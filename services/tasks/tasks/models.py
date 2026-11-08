@@ -1,0 +1,48 @@
+from django.db import models
+from django.utils import timezone
+
+
+class Task(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "A fazer"
+        IN_PROGRESS = "in_progress", "Em andamento"
+        DONE = "done", "Concluída"
+
+    class Priority(models.IntegerChoices):
+        URGENT = 1, "Urgente"
+        HIGH = 2, "Alta"
+        MEDIUM = 3, "Média"
+        LOW = 4, "Baixa"
+
+    title = models.CharField("título", max_length=200)
+    description = models.TextField("descrição", blank=True)
+    status = models.CharField(
+        "status", max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    # Referências a dados de OUTROS serviços (sem chave estrangeira: bancos separados).
+    # O nome do responsável/projeto é obtido por HTTP em users-service e projects-service.
+    responsible_id = models.PositiveIntegerField("id do responsável", null=True, blank=True)
+    project_id = models.PositiveIntegerField("id do projeto", null=True, blank=True)
+    priority = models.PositiveSmallIntegerField(
+        "prioridade", choices=Priority.choices, default=Priority.LOW
+    )
+    due_date = models.DateField("data de entrega", null=True, blank=True)
+    created_at = models.DateTimeField("criada em", auto_now_add=True)
+    updated_at = models.DateTimeField("atualizada em", auto_now=True)
+    # Preenchido quando a tarefa vira "concluída" (base do evento do Módulo 4)
+    completed_at = models.DateTimeField("concluída em", null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "tarefa"
+        verbose_name_plural = "tarefas"
+
+    def save(self, *args, **kwargs):
+        if self.status == self.Status.DONE and self.completed_at is None:
+            self.completed_at = timezone.now()
+        elif self.status != self.Status.DONE:
+            self.completed_at = None
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title

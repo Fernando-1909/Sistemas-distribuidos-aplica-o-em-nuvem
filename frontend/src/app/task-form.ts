@@ -2,7 +2,7 @@ import { Component, OnInit, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { PriorityPicker } from './priority-picker';
-import { COLUMNS, Task, TaskInput } from './task.model';
+import { COLUMNS, Member, Project, Task, TaskInput } from './task.model';
 
 @Component({
   selector: 'app-task-form',
@@ -13,6 +13,8 @@ import { COLUMNS, Task, TaskInput } from './task.model';
 export class TaskForm implements OnInit {
   /** Tarefa em edição; vazio = nova tarefa. */
   readonly task = input<Task | null>(null);
+  readonly members = input<Member[]>([]);
+  readonly projects = input<Project[]>([]);
   readonly saving = input(false);
   readonly error = input('');
 
@@ -25,10 +27,11 @@ export class TaskForm implements OnInit {
   protected model: TaskInput = {
     title: '',
     description: '',
-    responsible: '',
     status: 'pending',
     priority: 4,
     due_date: null,
+    responsible_id: null,
+    project_id: null,
   };
 
   ngOnInit() {
@@ -37,10 +40,11 @@ export class TaskForm implements OnInit {
       this.model = {
         title: t.title,
         description: t.description,
-        responsible: t.responsible,
         status: t.status,
         priority: t.priority,
         due_date: t.due_date,
+        responsible_id: t.responsible_id,
+        project_id: t.project_id,
       };
     }
   }

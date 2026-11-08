@@ -33,12 +33,27 @@
     <div class="row">
       <label>
         Responsável
-        <input name="responsible" [(ngModel)]="model.responsible" maxlength="100" placeholder="Nome" />
+        <select name="responsible" [(ngModel)]="model.responsible_id">
+          <option [ngValue]="null">Sem responsável</option>
+          @for (m of members(); track m.id) {
+            <option [ngValue]="m.id">{{ m.name }}</option>
+          }
+        </select>
       </label>
-      <div class="field">
-        Prioridade
-        <app-priority [(value)]="model.priority" />
-      </div>
+      <label>
+        Projeto
+        <select name="project" [(ngModel)]="model.project_id">
+          <option [ngValue]="null">Sem projeto</option>
+          @for (p of projects(); track p.id) {
+            <option [ngValue]="p.id">{{ p.name }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="field">
+      Prioridade
+      <app-priority [(value)]="model.priority" />
     </div>
 
     @if (error()) {
