@@ -3,6 +3,7 @@
 Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). Este repositório está no **Módulo 2 — Serviços / Microsserviços**: a API do Módulo 1 foi decomposta em três microsserviços independentes, cada um com seu próprio banco de dados, que se comunicam por HTTP.
 
 - **Vídeo do Módulo 1:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
+- **Vídeo do Módulo 2:** _https://www.youtube.com/watch?v=5Vl8TrylzPc_
 - **Frontend:** _https://https://tarefas-frontend-hn3e.onrender.com/_
 - **tasks-service:** _https://SEU-TASKS.onrender.com/api/_
 - **users-service:** _https://SEU-USERS.onrender.com/api/_
