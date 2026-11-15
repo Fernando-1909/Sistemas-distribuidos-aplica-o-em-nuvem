@@ -2,32 +2,11 @@
 
 Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). A mesma aplicação (um gerenciador de tarefas) evolui a cada módulo. Este repositório está no **Módulo 3 — Containers**: cada microsserviço tem o seu `Dockerfile` e o sistema inteiro, com os bancos, sobe com um único comando (`docker compose up`).
 
-- **Vídeo do Módulo 1:** https://www.youtube.com/watch?v=KyOGIrHJiOc
-- **Vídeo do Módulo 2:** _https://www.youtube.com/watch?v=5Vl8TrylzPc_
-- **Vídeo do Módulo 3:** _cole aqui o link do YouTube (não listado)_
-- **Frontend (nuvem):** https://tarefas-frontend-hn3e.onrender.com
-- **tasks-service (nuvem):** https://tarefas-api-fepn.onrender.com/api/
-- **users-service (nuvem):** https://tarefas-users.onrender.com/api/
-- **projects-service (nuvem):** https://tarefas-projects.onrender.com/api/
-
-| Módulo | Tema | Onde está | Tag Git |
-|---|---|---|---|
-| 1 | Computação em nuvem | API única publicada no Render | `entrega-1-cloud` |
-| 2 | Microsserviços | `services/` (tasks, users, projects) no Render | `entrega-2-microsservicos` |
-| 3 | Containers | `Dockerfile` por serviço + `docker-compose.yml` | `entrega-3-containers` |
-| 4 | Mensageria | RabbitMQ (próximo módulo) | — |
-
-## Início rápido com Docker
-
-Requisitos: [Docker](https://docs.docker.com/get-docker/) (Docker Desktop no Windows/macOS; Docker Engine com o plugin Compose no Linux).
-
-```bash
-git clone https://github.com/Fernando-1909/Sistemas-distribuidos-aplica-o-em-nuvem.git
-cd Sistemas-distribuidos-aplica-o-em-nuvem
-docker compose up --build -d
-```
-
-Na primeira vez o Docker baixa as imagens base e constrói as 4 imagens (alguns minutos). Quando terminar, abra **http://localhost:4200**. Para parar mantendo os dados: `docker compose down`.
+- **Vídeo do Módulo 1:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
+- **Frontend:** _https://https://tarefas-frontend-hn3e.onrender.com/_
+- **tasks-service:** _https://SEU-TASKS.onrender.com/api/_
+- **users-service:** _https://SEU-USERS.onrender.com/api/_
+- **projects-service:** _https://SEU-PROJECTS.onrender.com/api/_
 
 ## Arquitetura dos serviços (Módulo 2)
 
