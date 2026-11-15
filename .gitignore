@@ -5,6 +5,8 @@ __pycache__/
 venv/
 db.sqlite3
 staticfiles/
+
+# Segredos (copie .env.example para .env; o .env nunca vai para o Git)
 .env
 
 # Node / Angular

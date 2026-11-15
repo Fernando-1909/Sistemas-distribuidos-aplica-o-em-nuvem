@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 625" width="980" height="625" font-family="Inter, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5e4b5a"/></marker>
+    <marker id="setaMarca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#d3366a"/></marker>
+  </defs>
+  <rect width="980" height="625" fill="#fffaf6"/>
+  <text x="30" y="34" font-size="18" font-weight="700" fill="#2b1d29">Arquitetura do Módulo 3 · Containers (Docker Compose)</text>
+
+  <!-- Navegador no host -->
+  <rect x="20" y="265" width="150" height="100" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="95" y="304" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">Navegador</text>
+  <text x="95" y="324" text-anchor="middle" font-size="11" fill="#6b5a68">no seu computador</text>
+  <text x="95" y="341" text-anchor="middle" font-size="11" fill="#6b5a68">(host)</text>
+
+  <!-- Rede do Compose -->
+  <rect x="215" y="52" width="745" height="525" rx="16" fill="none" stroke="#5e4b5a" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="232" y="76" font-size="12" font-weight="600" fill="#5e4b5a">Docker Compose · rede "tarefas_default" (os containers se encontram pelo nome)</text>
+
+  <!-- frontend -->
+  <rect x="240" y="270" width="150" height="90" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="315" y="304" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">frontend</text>
+  <text x="315" y="323" text-anchor="middle" font-size="11" fill="#6b5a68">nginx · Angular compilado</text>
+  <text x="315" y="341" text-anchor="middle" font-size="11" fill="#6b5a68">porta 4200 → 80</text>
+
+  <!-- serviços -->
+  <rect x="450" y="95" width="210" height="90" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="555" y="127" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">users</text>
+  <text x="555" y="146" text-anchor="middle" font-size="11" fill="#6b5a68">Django · gunicorn</text>
+  <text x="555" y="164" text-anchor="middle" font-size="11" fill="#6b5a68">porta 8001 → 8000</text>
+
+  <rect x="450" y="270" width="210" height="90" rx="12" fill="#ffffff" stroke="#d3366a" stroke-width="3"/>
+  <text x="555" y="302" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">tasks</text>
+  <text x="555" y="321" text-anchor="middle" font-size="11" fill="#6b5a68">Django · gunicorn</text>
+  <text x="555" y="339" text-anchor="middle" font-size="11" fill="#6b5a68">porta 8000 → 8000</text>
+
+  <rect x="450" y="445" width="210" height="90" rx="12" fill="#ffffff" stroke="#2b1d29" stroke-width="2"/>
+  <text x="555" y="477" text-anchor="middle" font-size="15" font-weight="700" fill="#2b1d29">projects</text>
+  <text x="555" y="496" text-anchor="middle" font-size="11" fill="#6b5a68">Django · gunicorn</text>
+  <text x="555" y="514" text-anchor="middle" font-size="11" fill="#6b5a68">porta 8002 → 8000</text>
+
+  <!-- bancos -->
+  <g fill="#ffffff" stroke="#2b1d29" stroke-width="2">
+    <path d="M770 120 v50 a80 12 0 0 0 160 0 v-50"/><ellipse cx="850" cy="120" rx="80" ry="12"/>
+    <path d="M770 295 v50 a80 12 0 0 0 160 0 v-50"/><ellipse cx="850" cy="295" rx="80" ry="12"/>
+    <path d="M770 470 v50 a80 12 0 0 0 160 0 v-50"/><ellipse cx="850" cy="470" rx="80" ry="12"/>
+  </g>
+  <g text-anchor="middle" fill="#2b1d29">
+    <text x="850" y="152" font-size="13" font-weight="700">users-db</text><text x="850" y="168" font-size="11" fill="#6b5a68">postgres:16</text>
+    <text x="850" y="327" font-size="13" font-weight="700">tasks-db</text><text x="850" y="343" font-size="11" fill="#6b5a68">postgres:16</text>
+    <text x="850" y="502" font-size="13" font-weight="700">projects-db</text><text x="850" y="518" font-size="11" fill="#6b5a68">postgres:16</text>
+  </g>
+  <!-- volumes -->
+  <g font-size="11" fill="#d3366a" font-weight="600" text-anchor="middle">
+    <text x="850" y="198">volume: users_data</text>
+    <text x="850" y="373">volume: tasks_data</text>
+    <text x="850" y="548">volume: projects_data</text>
+  </g>
+
+  <!-- navegador -> containers (portas publicadas) -->
+  <path d="M170 315 H238" fill="none" stroke="#d3366a" stroke-width="2" marker-end="url(#setaMarca)"/>
+  <text x="178" y="306" font-size="11" fill="#d3366a">:4200</text>
+  <g fill="none" stroke="#5e4b5a" stroke-width="2" marker-end="url(#seta)">
+    <path d="M95 265 V140 H448"/>
+    <path d="M95 365 V490 H448"/>
+  </g>
+  <text x="230" y="132" font-size="11" fill="#5e4b5a">:8001 (CRUD de responsáveis)</text>
+  <text x="230" y="482" font-size="11" fill="#5e4b5a">:8002 (CRUD de projetos)</text>
+    <path d="M170 335 H230 V385 H430 V335 H448" fill="none" stroke="#5e4b5a" stroke-width="2" marker-end="url(#seta)"/>
+  <text x="262" y="401" font-size="11" fill="#5e4b5a">:8000 (tarefas)</text>
+
+  <!-- tasks -> users / projects (HTTP interno) -->
+  <g fill="none" stroke="#d3366a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#setaMarca)">
+    <path d="M555 270 V187"/><path d="M555 360 V443"/>
+  </g>
+  <g font-size="11" fill="#d3366a">
+    <text x="565" y="232">http://users:8000</text>
+    <text x="565" y="408">http://projects:8000</text>
+  </g>
+
+  <!-- serviço -> banco -->
+  <g fill="none" stroke="#5e4b5a" stroke-width="2" marker-end="url(#seta)">
+    <path d="M660 140 H768"/><path d="M660 315 H768"/><path d="M660 490 H768"/>
+  </g>
+  <g font-size="11" fill="#5e4b5a" text-anchor="middle">
+    <text x="714" y="133">SQL</text><text x="714" y="308">SQL</text><text x="714" y="483">SQL</text>
+  </g>
+
+  <text x="30" y="606" font-size="12" fill="#5e4b5a">Setas rosa tracejadas: chamadas HTTP entre containers pelo nome do serviço. Os bancos não publicam porta no host.</text>
+</svg>

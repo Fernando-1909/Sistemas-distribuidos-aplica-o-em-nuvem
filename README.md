@@ -1,57 +1,78 @@
 # Gerenciador de tarefas distribuído
 
-Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). Este repositório está no **Módulo 2 — Serviços / Microsserviços**: a API do Módulo 1 foi decomposta em três microsserviços independentes, cada um com seu próprio banco de dados, que se comunicam por HTTP.
+Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). A mesma aplicação (um gerenciador de tarefas) evolui a cada módulo. Este repositório está no **Módulo 3 — Containers**: cada microsserviço tem o seu `Dockerfile` e o sistema inteiro, com os bancos, sobe com um único comando (`docker compose up`).
 
-- **Vídeo do Módulo 1:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
-- **Frontend:** _https://https://tarefas-frontend-hn3e.onrender.com/_
-- **tasks-service:** _https://SEU-TASKS.onrender.com/api/_
-- **users-service:** _https://SEU-USERS.onrender.com/api/_
-- **projects-service:** _https://SEU-PROJECTS.onrender.com/api/_
+- **Vídeo do Módulo 1:** https://www.youtube.com/watch?v=KyOGIrHJiOc
+- **Vídeo do Módulo 2:** _https://www.youtube.com/watch?v=5Vl8TrylzPc_
+- **Vídeo do Módulo 3:** _cole aqui o link do YouTube (não listado)_
+- **Frontend (nuvem):** https://tarefas-frontend-hn3e.onrender.com
+- **tasks-service (nuvem):** https://tarefas-api-fepn.onrender.com/api/
+- **users-service (nuvem):** https://tarefas-users.onrender.com/api/
+- **projects-service (nuvem):** https://tarefas-projects.onrender.com/api/
 
-## Arquitetura
+| Módulo | Tema | Onde está | Tag Git |
+|---|---|---|---|
+| 1 | Computação em nuvem | API única publicada no Render | `entrega-1-cloud` |
+| 2 | Microsserviços | `services/` (tasks, users, projects) no Render | `entrega-2-microsservicos` |
+| 3 | Containers | `Dockerfile` por serviço + `docker-compose.yml` | `entrega-3-containers` |
+| 4 | Mensageria | RabbitMQ (próximo módulo) | — |
+
+## Início rápido com Docker
+
+Requisitos: [Docker](https://docs.docker.com/get-docker/) (Docker Desktop no Windows/macOS; Docker Engine com o plugin Compose no Linux).
+
+```bash
+git clone https://github.com/Fernando-1909/Sistemas-distribuidos-aplica-o-em-nuvem.git
+cd Sistemas-distribuidos-aplica-o-em-nuvem
+docker compose up --build -d
+```
+
+Na primeira vez o Docker baixa as imagens base e constrói as 4 imagens (alguns minutos). Quando terminar, abra **http://localhost:4200**. Para parar mantendo os dados: `docker compose down`.
+
+## Arquitetura dos serviços (Módulo 2)
 
 ![Diagrama da arquitetura](docs/arquitetura.png)
 
-| Serviço | Responsabilidade | Banco (Neon) | Chama |
+| Serviço | Responsabilidade | Banco | Chama |
 |---|---|---|---|
 | `tasks-service` | Tarefas (título, status, prioridade, data, `responsible_id`, `project_id`) | `tasks_db` | users e projects |
 | `users-service` | Responsáveis (nome, e-mail) | `users_db` | ninguém |
 | `projects-service` | Projetos (nome, cor) | `projects_db` | ninguém |
 | Frontend (Angular) | Interface; chama os três serviços | — | os três |
 
-Tecnologias: Python + Django + Django REST Framework (os três serviços), PostgreSQL no Neon, Angular 20, Render (hospedagem).
+Tecnologias: Python + Django + Django REST Framework (os três serviços), PostgreSQL, Angular 20, Docker, Render e Neon (nuvem).
 
 ### Estrutura de pastas
 
 ```
 services/
-  tasks/      tasks-service    (Django: config/, tasks/, build.sh, requirements.txt)
-  users/      users-service    (Django: config/, members/, ...)
-  projects/   projects-service (Django: config/, projects/, ...)
-frontend/     App Angular (src/app/, scripts/set-env.js)
-docs/         arquitetura.svg e arquitetura.png
-scripts/      testar-api.sh e testar-microsservicos.sh (testes com curl)
-render.yaml   Atalho opcional para criar os serviços no Render
+  tasks/      tasks-service    (Dockerfile, entrypoint.sh, config/, tasks/, ...)
+  users/      users-service    (Dockerfile, entrypoint.sh, config/, members/, ...)
+  projects/   projects-service (Dockerfile, entrypoint.sh, config/, projects/, ...)
+frontend/     App Angular (Dockerfile, nginx.conf, src/)
+docs/         diagramas e o guia de deploy no Render (deploy-render.md)
+scripts/      testar-containers.sh, testar-microsservicos.sh, testar-api.sh
+docker-compose.yml   sobe tudo localmente: 3 serviços + 3 bancos + frontend
+.env.example         valores opcionais para o Compose
+render.yaml          atalho para o deploy sem Docker no Render
 ```
 
 ## Como os serviços se comunicam
 
-A tarefa guarda apenas **ids** (`responsible_id`, `project_id`). Como cada serviço tem seu banco, não existe chave estrangeira entre eles; o `tasks-service` consulta os outros por HTTP:
+A tarefa guarda apenas **ids** (`responsible_id`, `project_id`). Como cada serviço tem o seu banco, não existe chave estrangeira entre eles; o `tasks-service` consulta os outros por HTTP:
 
-- **Escrita (criar/editar tarefa com responsável ou projeto):** o `tasks-service` pergunta ao serviço dono do dado se o id existe (`GET /api/members/<id>/` ou `GET /api/projects/<id>/`). Se não existe, responde `400`.
-- **Leitura (listar tarefas):** o `tasks-service` busca os nomes **em lote** (`GET /api/members/?ids=1,2,3`), uma chamada por serviço e **em paralelo**, e devolve cada tarefa com `responsible` e `project` já preenchidos.
+- **Escrita:** ao criar/editar uma tarefa com responsável ou projeto, ele confirma que o id existe (`GET /api/members/<id>/` ou `/api/projects/<id>/`). Se não existe, responde `400`.
+- **Leitura:** busca os nomes **em lote** (`GET /api/members/?ids=1,2,3`), uma chamada por serviço e **em paralelo**, e devolve cada tarefa com `responsible` e `project` já preenchidos.
 - **Frontend:** usa o `tasks-service` para tarefas e fala direto com `users` e `projects` para o CRUD deles.
 
-### Tratamento de falhas (requisito do Módulo 2)
+**Tratamento de falhas:** toda chamada entre serviços tem timeout (`SERVICE_TIMEOUT`).
 
-Toda chamada entre serviços tem timeout (`SERVICE_TIMEOUT`, em segundos). O comportamento quando um serviço dependente está fora do ar:
-
-| Situação | Resposta do tasks-service |
+| Situação (um serviço dependente fora do ar) | Resposta do tasks-service |
 |---|---|
 | Listar tarefas | Continua funcionando; o campo vem como `{"name": null, "state": "unavailable"}` e a interface mostra "indisponível" |
-| Criar/editar tarefa **com** `responsible_id` ou `project_id` | `503` com a mensagem "O serviço de responsáveis está indisponível no momento. Tente novamente em instantes." |
-| Criar tarefa sem responsável/projeto, editar o título, concluir, excluir | Funciona normalmente (não depende dos outros serviços) |
-| O id foi excluído no outro serviço | `{"name": null, "state": "removed"}` e a interface mostra "removido" |
+| Criar/editar tarefa **com** `responsible_id` ou `project_id` | `503` com mensagem amigável ("O serviço de responsáveis está indisponível no momento...") |
+| Criar sem responsável/projeto, editar o título, concluir, excluir | Funciona normalmente |
+| O id foi excluído no outro serviço | `{"name": null, "state": "removed"}` |
 
 `GET /api/health/?deep=1` no `tasks-service` mostra o estado das dependências (`ok` ou `unavailable`).
 
@@ -59,239 +80,253 @@ Toda chamada entre serviços tem timeout (`SERVICE_TIMEOUT`, em segundos). O com
 
 Todos os serviços têm `GET /api/health/` (testa o serviço e a conexão com o banco).
 
-**tasks-service**
-
-| Método | Rota | O que faz |
+| Serviço | Rotas | Observações |
 |---|---|---|
-| GET | `/api/tasks/` | Lista tarefas (`?status=`, `?responsible_id=`, `?project_id=`) |
-| POST | `/api/tasks/` | Cria tarefa |
-| GET / PUT / PATCH / DELETE | `/api/tasks/<id>/` | Detalha, atualiza ou remove |
+| tasks | `GET/POST /api/tasks/`, `GET/PUT/PATCH/DELETE /api/tasks/<id>/` | Filtros `?status=`, `?responsible_id=`, `?project_id=`. Campos: `title`, `description`, `status` (`pending`, `in_progress`, `done`), `priority` (1 a 4), `due_date`, `responsible_id`, `project_id`. Somente leitura: `responsible`, `project`, `created_at`, `updated_at`, `completed_at` |
+| users | `GET/POST /api/members/`, `GET/PUT/PATCH/DELETE /api/members/<id>/` | Filtro `?ids=1,2,3`. Campos: `name`, `email` |
+| projects | `GET/POST /api/projects/`, `GET/PUT/PATCH/DELETE /api/projects/<id>/` | Filtro `?ids=1,2,3`. Campos: `name`, `color` (`#RRGGBB`) |
 
-Campos: `title`, `description`, `status` (`pending`, `in_progress`, `done`), `priority` (1 = urgente ... 4 = baixa), `due_date` (`AAAA-MM-DD`), `responsible_id`, `project_id`; somente leitura: `responsible`, `project`, `created_at`, `updated_at` e `completed_at` (preenchido quando vira `done`, base do evento do Módulo 4).
+---
 
-**users-service**: `GET/POST /api/members/`, `GET/PUT/PATCH/DELETE /api/members/<id>/`, filtro `?ids=1,2,3`. Campos: `name`, `email`.
+# Módulo 3 — Containers
 
-**projects-service**: `GET/POST /api/projects/`, `GET/PUT/PATCH/DELETE /api/projects/<id>/`, filtro `?ids=1,2,3`. Campos: `name`, `color` (`#RRGGBB`).
+## O que foi feito
 
-## Rodando localmente
+- **Um `Dockerfile` por serviço** (`services/tasks`, `services/users`, `services/projects`) e um para o frontend.
+- **`docker-compose.yml`** que orquestra **7 containers**: 3 serviços Django, 3 bancos PostgreSQL (um por serviço) e o frontend servido por nginx.
+- **Variáveis de ambiente** no Compose (com valores de desenvolvimento por padrão e `.env` opcional) e **volumes nomeados** para os dados dos bancos.
+- **Teste documentado** de que os dados persistem após `docker compose down` e `up` (`scripts/testar-containers.sh`).
+- **Comparação** entre o deploy direto (Módulos 1 e 2) e o conteinerizado, mais abaixo.
 
-Requisitos: Python 3.12+ e Node 20.19+ (ou 22.12+). Sem `DATABASE_URL`, cada serviço usa o seu próprio arquivo SQLite (`db.sqlite3` dentro da pasta do serviço), então os bancos já ficam separados.
+![Diagrama com containers](docs/arquitetura-containers.png)
 
-Crie um ambiente virtual único na raiz do projeto e instale as dependências (o `tasks-service` tem todas as bibliotecas dos três):
+## Subindo o sistema
+
+```bash
+docker compose up --build -d     # constrói as imagens e sobe tudo em segundo plano
+docker compose ps                # estado dos containers (STATUS "healthy" quando prontos)
+docker compose logs -f tasks     # acompanha os logs de um serviço
+docker compose down              # para e remove os containers (os DADOS ficam nos volumes)
+docker compose down -v           # para e APAGA os dados (remove os volumes)
+```
+
+| Container | Imagem | Porta no host | Função |
+|---|---|---|---|
+| `frontend` | `tarefas/frontend` (nginx) | **4200** | Interface Angular já compilada |
+| `tasks` | `tarefas/tasks` | **8000** | API de tarefas |
+| `users` | `tarefas/users` | **8001** | API de responsáveis |
+| `projects` | `tarefas/projects` | **8002** | API de projetos |
+| `tasks-db`, `users-db`, `projects-db` | `postgres:16-alpine` | não publicada | Um PostgreSQL por serviço, cada um com seu volume |
+
+O Compose espera cada banco ficar saudável antes de subir o serviço dele, e o `tasks` só sobe depois de `users` e `projects` estarem saudáveis (`depends_on` com `condition: service_healthy`).
+
+## Os Dockerfiles
+
+Os três serviços usam o mesmo modelo (`services/<serviço>/Dockerfile`). Boas práticas aplicadas:
+
+| Prática | Como aparece no Dockerfile |
+|---|---|
+| Imagem base enxuta | `python:3.12-slim` (e `nginx:alpine` no frontend) |
+| **Multi-stage build** | O estágio `builder` instala as dependências em um virtualenv; a imagem final só copia o virtualenv pronto. No frontend, o estágio com Node e `node_modules` (centenas de MB) compila o Angular e **só os arquivos compilados** vão para a imagem do nginx |
+| Cache de camadas | `requirements.txt` (e `package.json`) são copiados antes do código: mudar o código não refaz a instalação das dependências |
+| Usuário sem privilégios | O processo roda como o usuário `app`, não como root |
+| `.dockerignore` | Fora da imagem: `.venv`, `__pycache__`, `db.sqlite3`, `.env`, `node_modules` |
+| Sem segredos na imagem | `SECRET_KEY` e `DATABASE_URL` entram só por variável de ambiente, na hora de rodar |
+| `HEALTHCHECK` | O Docker marca o container como `healthy` quando `/api/health/` responde (no frontend, quando o nginx responde) |
+| Porta configurável | O `entrypoint.sh` usa `$PORT` (padrão 8000); plataformas como o Render definem essa variável |
+| Migrações automáticas | O `entrypoint.sh` roda `migrate` antes de iniciar o `gunicorn` |
+
+## Variáveis de ambiente
+
+Definidas no `docker-compose.yml`. Para trocar senhas/chave, copie `.env.example` para `.env` (o `.env` não vai para o Git).
+
+| Variável | Onde | Valor no Compose | Para que serve |
+|---|---|---|---|
+| `SECRET_KEY` | os 3 serviços | `.env` ou um valor de desenvolvimento | Chave secreta do Django |
+| `DEBUG` | os 3 serviços | `False` | Modo produção |
+| `DATABASE_URL` | cada serviço | `postgresql://users:SENHA@users-db:5432/users_db` (e equivalentes) | Conexão com o **seu** banco. O host (`users-db`) é o nome do container |
+| `ALLOWED_HOSTS` | cada serviço | `localhost,127.0.0.1,<nome do serviço>` | Hosts aceitos (o nome do serviço permite a chamada entre containers) |
+| `CORS_ALLOWED_ORIGINS` | os 3 serviços | `http://localhost:4200` | Libera o frontend no navegador |
+| `USERS_SERVICE_URL`, `PROJECTS_SERVICE_URL` | tasks | `http://users:8000`, `http://projects:8000` | Endereço dos outros serviços **dentro da rede do Compose** |
+| `SERVICE_TIMEOUT` | tasks | `5` | Segundos de espera por outro serviço |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | bancos | `users_db`/`users`/`USERS_DB_PASSWORD` (e equivalentes) | Criam o banco na primeira inicialização |
+| `TASKS_API_URL`, `USERS_API_URL`, `PROJECTS_API_URL` | frontend (**build args**) | `http://localhost:8000/api` (8001 e 8002) | Endereços que o **navegador** usa; são gravados no código no build |
+
+## Volumes e persistência
+
+Cada banco grava seus dados em um **volume nomeado**: `tarefas_users_data`, `tarefas_projects_data` e `tarefas_tasks_data`. Um volume existe independentemente dos containers, então `docker compose down` remove os containers, mas **não** os dados. Só `docker compose down -v` apaga os volumes.
+
+```bash
+docker volume ls --filter name=tarefas_    # lista os volumes do projeto
+```
+
+## Teste documentado: os dados persistem após `down` e `up`
+
+```bash
+bash scripts/testar-containers.sh          # no Windows, use o Git Bash ou o WSL
+```
+
+O script: (1) sobe tudo; (2) faz o health check dos 3 serviços; (3) cria um responsável, um projeto e uma tarefa que referencia os dois; (4) executa `docker compose down` e mostra que não há containers, mas os 3 volumes continuam; (5) sobe tudo de novo; (6) lista as tarefas e confere que os dados dos **três** bancos continuam lá. Tire **prints** da saída. Exemplo de execução:
+
+```text
+==> 1. Subindo tudo (docker compose up --build --wait)
+NAME                    IMAGE                     STATUS                    PORTS
+tarefas-frontend-1      tarefas/frontend:latest   Up 5 seconds (healthy)    0.0.0.0:4200->80/tcp
+tarefas-projects-1      tarefas/projects:latest   Up 12 seconds (healthy)   0.0.0.0:8002->8000/tcp
+tarefas-projects-db-1   postgres:16-alpine        Up 17 seconds (healthy)   5432/tcp
+tarefas-tasks-1         tarefas/tasks:latest      Up 6 seconds (healthy)    0.0.0.0:8000->8000/tcp
+tarefas-tasks-db-1      postgres:16-alpine        Up 17 seconds (healthy)   5432/tcp
+tarefas-users-1         tarefas/users:latest      Up 12 seconds (healthy)   0.0.0.0:8001->8000/tcp
+tarefas-users-db-1      postgres:16-alpine        Up 17 seconds (healthy)   5432/tcp
+
+==> 2. Health check dos 3 serviços
+{"status":"ok","service":"users","database":"postgresql"}
+{"status":"ok","service":"projects","database":"postgresql"}
+{"status":"ok","service":"tasks","database":"postgresql","dependencies":{"users":"ok","projects":"ok"}}
+
+==> 3. Criando dados: responsável, projeto e tarefa
+Criados: responsável 1, projeto 1 e a tarefa "Persistência 154819"
+
+==> 4. Derrubando os containers (docker compose down) - os volumes são mantidos
+Containers em execução agora:
+NAME      IMAGE     COMMAND   SERVICE   CREATED   STATUS    PORTS
+Volumes que continuam existindo:
+local     tarefas_projects_data
+local     tarefas_tasks_data
+local     tarefas_users_data
+
+==> 6. Tarefas DEPOIS do down/up
+[{"id":1,"title":"Persistência 154819", ... "responsible":{"id":1,"name":"Ana (teste Docker)","state":"ok"}, ...}]
+OK: os dados dos 3 bancos persistiram após docker compose down/up.
+```
+
+Para confirmar que `down -v` realmente apaga: rode `docker compose down -v`, suba de novo e `curl http://localhost:8000/api/tasks/` devolve `[]`.
+
+**Teste de falha com containers:** `docker compose stop users` e, no site, as tarefas continuam aparecendo com o responsável "indisponível"; criar tarefa com responsável mostra a mensagem amigável. `docker compose start users` religa o serviço.
+
+## Comparação: deploy direto (Módulos 1 e 2) × containers (Módulo 3)
+
+| Aspecto | Deploy direto no Render | Com containers (Docker) |
+|---|---|---|
+| Como o código vai para o ar | O Render clona o repositório e executa `build.sh` e o comando de início | Uma **imagem** é construída a partir do `Dockerfile`, com código, dependências e comando de início juntos |
+| Ambiente (Python, bibliotecas) | Escolhido no painel (`PYTHON_VERSION`) e instalado pelo Render a cada build | Fixado dentro da imagem: o mesmo ambiente em qualquer máquina |
+| Subir o sistema inteiro | Criar 4 serviços no painel, copiar URLs, configurar variáveis e CORS | `docker compose up` |
+| Configuração | Variáveis no painel do Render | Variáveis no `docker-compose.yml` e no `.env` |
+| Comunicação entre serviços | Por URLs públicas HTTPS (`...onrender.com`), passando pela internet | Pela rede interna do Compose, pelo nome do serviço (`http://users:8000`) |
+| Banco de dados | Neon, na nuvem | PostgreSQL em container, com volume, na máquina local |
+| Isolamento | Processos no ambiente do provedor | Cada serviço em seu container (sistema de arquivos, rede e usuário próprios) |
+| Partida a frio | Serviços gratuitos dormem após 15 min (cerca de 1 min para acordar) | Containers ficam rodando; não há "sono" |
+| Depuração | Logs no painel | `docker compose logs -f` e `docker compose exec` |
+
+**O que mudou:** o artefato de entrega passou a ser a imagem e não mais o código solto, o ambiente ficou descrito em arquivo (`Dockerfile`) e os serviços passaram a se comunicar por uma rede interna com nomes, em vez de URLs públicas.
+
+**O que ficou mais fácil:** reproduzir o ambiente (quem clonar o repositório roda tudo com um comando, sem instalar Python, Node ou PostgreSQL), subir e derrubar o sistema inteiro, evitar o problema de "na minha máquina funciona", e testar sem depender da internet ou do tempo de despertar dos serviços gratuitos.
+
+**O que ficou mais difícil:** é preciso aprender Docker e Compose (imagens, camadas, volumes, redes); há mais arquivos para manter; as imagens ocupam disco e o build leva tempo; o frontend grava as URLs das APIs no build, então mudar uma porta exige reconstruir a imagem; e é preciso cuidar dos volumes (`down -v` apaga tudo e a senha do banco só é aplicada na primeira inicialização).
+
+## Publicar na nuvem usando as imagens (opcional)
+
+O Render também aceita um `Dockerfile`. Para experimentar com **um** serviço, por exemplo o `users` (sugestão: crie um serviço novo, para não mexer no que já funciona):
+
+1. **New + → Web Service** → repositório → em **Language**, escolha **Docker**.
+2. **Root Directory** `services/users`. Se o Render não achar o Dockerfile, ajuste o campo **Dockerfile Path** (por exemplo `./services/users/Dockerfile`) e o contexto de build.
+3. Não há Build Command nem Start Command: quem inicia é o `ENTRYPOINT` da imagem, que usa a porta `$PORT` fornecida pelo Render.
+4. Variáveis de ambiente iguais às do deploy direto (`DEBUG`, `SECRET_KEY`, `DATABASE_URL` do Neon, `CORS_ALLOWED_ORIGINS`...); `PYTHON_VERSION` não é mais necessária.
+5. **Health Check Path**: `/api/health/`.
+
+Esta parte é opcional no trabalho e não foi exercitada no Render; o `PORT` customizado foi validado localmente.
+
+## Comandos úteis
+
+```bash
+docker compose build tasks          # reconstrói a imagem de um serviço
+docker compose up -d --build tasks  # reconstrói e reinicia só esse serviço
+docker compose exec tasks sh        # abre um terminal dentro do container
+docker compose exec users-db psql -U users -d users_db -c '\dt'   # tabelas do banco do users
+docker compose logs --tail 50 users
+docker compose images               # tamanho das imagens
+docker system prune                 # limpa imagens/containers sem uso
+```
+
+## Problemas comuns (Docker)
+
+| Sintoma | Causa provável e solução |
+|---|---|
+| `port is already allocated` / `Bind for 0.0.0.0:8000 failed` | A porta já está em uso (por exemplo, um `runserver` local). Pare o processo ou mude o lado esquerdo da porta no Compose (e o build arg do frontend) |
+| `docker: 'compose' is not a docker command` | Docker antigo, sem o plugin Compose v2. Atualize o Docker (ou use `docker-compose`) |
+| Um serviço fica `unhealthy` ou reinicia | `docker compose logs <serviço>`. Causa comum: a senha do banco foi trocada no `.env` depois que o volume já existia (a senha só vale na primeira inicialização). Recrie os dados com `docker compose down -v` |
+| Frontend não encontra as APIs depois de mudar portas | As URLs são gravadas no build. Rode `docker compose build frontend` e suba de novo |
+| `exec /app/entrypoint.sh: no such file` ou `\r: command not found` (Windows) | Quebras de linha CRLF. O `.gitattributes` força LF; se o arquivo já foi baixado com CRLF, rode `git add --renormalize .` e reconstrua |
+| Erro de CORS ao abrir o frontend por outro endereço | Ajuste `CORS_ALLOWED_ORIGINS` no Compose para incluir esse endereço |
+| Pouco espaço em disco | `docker system prune` (remove o que não está em uso) |
+
+---
+
+## Rodando localmente sem Docker
+
+Requisitos: Python 3.12+ e Node 20.19+ (ou 22.12+). Sem `DATABASE_URL`, cada serviço usa o seu próprio SQLite.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r services/tasks/requirements.txt
+export DEBUG=True                  # PowerShell: $env:DEBUG="True"
 ```
 
-Depois abra **4 terminais**. Nos três primeiros, ative o ambiente virtual (`source .venv/bin/activate`) e defina `DEBUG=True` (`export DEBUG=True`; no PowerShell: `$env:DEBUG="True"`):
+Em 4 terminais (os três primeiros com o ambiente virtual ativo e `DEBUG=True`):
 
 ```bash
-# Terminal 1 - users-service (porta 8001)
-cd services/users && python manage.py migrate && python manage.py runserver 8001
-
-# Terminal 2 - projects-service (porta 8002)
+cd services/users    && python manage.py migrate && python manage.py runserver 8001
 cd services/projects && python manage.py migrate && python manage.py runserver 8002
-
-# Terminal 3 - tasks-service (porta 8000)
-cd services/tasks && python manage.py migrate && python manage.py runserver 8000
-
-# Terminal 4 - frontend (http://localhost:4200)
-cd frontend && npm install && npm start
+cd services/tasks    && python manage.py migrate && python manage.py runserver 8000
+cd frontend          && npm install && npm start            # http://localhost:4200
 ```
 
-Suba `users` e `projects` antes do `tasks`, ou ele vai tratá-los como indisponíveis até que respondam. Para usar o PostgreSQL do Neon localmente, defina `DATABASE_URL` em cada terminal (cada serviço com o **seu** banco).
+## Scripts de teste
 
-## Testando a comunicação entre os serviços
-
-Com os três serviços no ar (local ou na nuvem):
-
-```bash
-# local
-bash scripts/testar-microsservicos.sh
-
-# nuvem (URLs na ordem: tasks, users, projects)
-bash scripts/testar-microsservicos.sh https://SEU-TASKS.onrender.com https://SEU-USERS.onrender.com https://SEU-PROJECTS.onrender.com
-```
-
-O script faz o health check dos três serviços (o do `tasks` com `?deep=1`), cria um responsável e um projeto, cria uma tarefa que referencia os dois (o `tasks-service` valida os ids por HTTP), lista as tarefas com os nomes vindos dos outros serviços, confirma o erro `400` para um responsável inexistente, filtra por projeto e limpa os dados. No Windows, rode pelo Git Bash ou WSL. Tire **prints** da saída para a entrega.
-
-**Teste de falha (manual):** pare o `users-service` (local: `Ctrl+C`; Render: _Settings > Suspend Service_) e repita:
-
-1. Listar tarefas (`GET /api/tasks/`) continua funcionando, com `"responsible": {"name": null, "state": "unavailable"}`.
-2. Criar uma tarefa com `responsible_id` responde `503` com a mensagem amigável.
-3. Na interface aparece o aviso "Alguns nomes não puderam ser carregados…" e a barra lateral oferece "Tentar de novo".
-
-`scripts/testar-api.sh` continua disponível e testa só o CRUD do `tasks-service` (teste do Módulo 1).
-
----
-
-# Como hospedar no Render (passo a passo)
-
-Tudo é gratuito e **não exige cartão**. Os nomes de botões e menus podem mudar um pouco com o tempo, mas a lógica é a mesma. Serão **4 serviços no Render** (3 Web Services + 1 Static Site) e **3 bancos no Neon**.
-
-Ordem: **GitHub → bancos no Neon → users → projects → tasks → frontend → CORS**. Os serviços `users` e `projects` vêm antes porque o `tasks` e o frontend precisam das URLs deles.
-
-> **Já publicou o Módulo 1?** Você reaproveita o que existe: o Neon e o Web Service atuais viram o `tasks-service`, e o Static Site continua sendo o frontend. Veja as notas "Se você já tem o Módulo 1" nos Passos 2, 5 e 6.
-
-## Passo 1 — Atualizar o GitHub
-
-```bash
-git add .
-git commit -m "Módulo 2: microsserviços (tasks, users, projects)"
-git push
-```
-
-## Passo 2 — Criar os bancos no Neon (um por serviço)
-
-No <https://neon.com>, crie **3 projetos** (plano gratuito, sem cartão): `tasks`, `users` e `projects`. Em cada um, clique em **Connect**, **desative "Connection pooling"** e copie a connection string completa (`postgresql://USUARIO:SENHA@ep-xxxx.../neondb?sslmode=require`). Anote qual é de qual serviço: são **três `DATABASE_URL` diferentes**. Trate-as como senhas.
-
-> **Se você já tem o Módulo 1:** o projeto Neon que você já usa é o do `tasks`; crie só os projetos `users` e `projects`.
-
-Por que um projeto por serviço: o banco de cada microsserviço é isolado (credencial e dados separados), e nenhum serviço consegue ler as tabelas do outro.
-
-## Passo 3 — Publicar o users-service
-
-Em <https://render.com>: **New + → Web Service** → escolha o repositório → **Connect**.
-
-| Campo | Valor |
+| Script | O que testa |
 |---|---|
-| Name | `tarefas-users` |
-| Language | `Python 3` |
-| Branch | `main` |
-| Root Directory | `services/users` |
-| Build Command | `bash build.sh` |
-| Start Command | `gunicorn config.wsgi:application --workers 2` |
-| Instance Type | **Free** |
+| `scripts/testar-containers.sh` | **Módulo 3:** sobe o Compose e prova a persistência dos dados após `down`/`up` |
+| `scripts/testar-microsservicos.sh [URL_TASKS URL_USERS URL_PROJECTS]` | Módulo 2: comunicação entre os serviços (local ou na nuvem) |
+| `scripts/testar-api.sh [URL]` | Módulo 1: CRUD do `tasks-service` |
 
-Variáveis de ambiente:
+No Windows, rode os scripts pelo Git Bash ou pelo WSL.
 
-| Chave | Valor |
+## Deploy no Render (sem Docker)
+
+O passo a passo completo está em **[docs/deploy-render.md](docs/deploy-render.md)**. Resumo das regras de URL que mais causam erro:
+
+| Onde | Formato |
 |---|---|
-| `PYTHON_VERSION` | `3.12.8` |
-| `DEBUG` | `False` |
-| `SECRET_KEY` | string longa e aleatória (`python -c "import secrets; print(secrets.token_urlsafe(50))"`) |
-| `DATABASE_URL` | a connection string do Neon do projeto `users` |
-| `CORS_ALLOWED_ORIGINS` | por enquanto `http://localhost:4200` (ajustamos no Passo 7) |
-
-Em _Advanced_, **Health Check Path**: `/api/health/`. Clique em **Create Web Service** e espere ficar **Live**. Teste `https://SUA-URL-USERS.onrender.com/api/health/`: deve mostrar `"service":"users"` e `"database":"postgresql"`. **Anote a URL.**
-
-## Passo 4 — Publicar o projects-service
-
-Igual ao passo anterior, mudando:
-
-| Campo | Valor |
-|---|---|
-| Name | `tarefas-projects` |
-| Root Directory | `services/projects` |
-| `DATABASE_URL` | a connection string do Neon do projeto `projects` |
-
-Teste `/api/health/` (deve mostrar `"service":"projects"`) e **anote a URL**.
-
-## Passo 5 — Publicar o tasks-service
-
-**Criando do zero:** **New + → Web Service**, mesmo repositório:
-
-| Campo | Valor |
-|---|---|
-| Name | `tarefas-api` |
-| Root Directory | `services/tasks` |
-| Build Command | `bash build.sh` |
-| Start Command | `gunicorn config.wsgi:application --workers 2 --timeout 60` |
-| Instance Type | **Free** |
-
-**Se você já tem o Módulo 1:** abra o serviço `tarefas-api` existente → _Settings_ e altere **Root Directory** de `backend` para `services/tasks` e o **Start Command** para o valor acima. O `DATABASE_URL` continua o mesmo. Atenção: a migration deste módulo remove o campo antigo `responsible` (texto), então o nome do responsável das tarefas antigas é descartado.
-
-Variáveis de ambiente (as marcadas com ★ são novas neste módulo):
-
-| Chave | Valor |
-|---|---|
-| `PYTHON_VERSION` | `3.12.8` |
-| `DEBUG` | `False` |
-| `SECRET_KEY` | string longa e aleatória |
-| `DATABASE_URL` | a connection string do Neon do projeto `tasks` |
-| `CORS_ALLOWED_ORIGINS` | por enquanto `http://localhost:4200` |
-| ★ `USERS_SERVICE_URL` | URL do users-service, **sem `/api` e sem barra no final** (ex.: `https://tarefas-users.onrender.com`) |
-| ★ `PROJECTS_SERVICE_URL` | URL do projects-service, no mesmo formato |
-| ★ `SERVICE_TIMEOUT` | `10` (segundos de espera por outro serviço) |
-
-**Health Check Path**: `/api/health/`. Quando ficar **Live**, teste `https://SUA-URL-TASKS.onrender.com/api/health/?deep=1`: deve mostrar `"users":"ok"` e `"projects":"ok"`. Se mostrar `unavailable`, confira as duas URLs (e se os serviços estão acordados: veja "Plano gratuito" abaixo).
-
-## Passo 6 — Atualizar o frontend
-
-O frontend agora precisa das três URLs. No Static Site (`tarefas-frontend`; crie um novo, se ainda não tiver, como no Módulo 1: Root Directory `frontend`, Build Command `npm ci && npm run build`, Publish Directory `dist/frontend/browser`), em _Environment_:
-
-| Chave | Valor |
-|---|---|
-| `NODE_VERSION` | `22.12.0` |
-| `TASKS_API_URL` | `https://SUA-URL-TASKS.onrender.com/api` |
-| `USERS_API_URL` | `https://SUA-URL-USERS.onrender.com/api` |
-| `PROJECTS_API_URL` | `https://SUA-URL-PROJECTS.onrender.com/api` |
-
-Aqui **as URLs terminam em `/api`**, ao contrário das do Passo 5. **Se você já tem o Módulo 1:** a antiga `API_URL` vira `TASKS_API_URL` (a `API_URL` ainda funciona como alternativa, mas use o nome novo) e você adiciona as outras duas. Depois faça **Manual Deploy → Clear build cache & deploy**, porque as URLs são gravadas no código durante o build. Anote a URL do frontend.
-
-## Passo 7 — Liberar o frontend no CORS
-
-Nos **três** Web Services (`users`, `projects` e `tasks`), em _Environment_, altere `CORS_ALLOWED_ORIGINS` para a URL do frontend, **sem barra no final** (ex.: `https://tarefas-frontend.onrender.com`). O Render reinicia cada serviço sozinho.
-
-## Passo 8 — Testar
-
-1. Abra o frontend: crie um projeto e um responsável pela barra lateral e depois uma tarefa escolhendo os dois.
-2. Rode `bash scripts/testar-microsservicos.sh URL_TASKS URL_USERS URL_PROJECTS` e tire prints.
-3. Faça o teste de falha (suspenda o `users-service` e veja o comportamento descrito acima).
-
-## Atalho opcional: Blueprint (`render.yaml`)
-
-O `render.yaml` da raiz descreve os 4 serviços. Em **New + → Blueprint**, selecione o repositório e o Render cria tudo, pedindo os valores marcados como secretos (`DATABASE_URL` de cada serviço, `CORS_ALLOWED_ORIGINS`, as URLs dos serviços). Como as URLs só existem depois que os serviços são criados, você terá de preencher `USERS_SERVICE_URL`, `PROJECTS_SERVICE_URL`, as três `*_API_URL` e o CORS e fazer um novo deploy. Os serviços usam o plano gratuito; confira na tela de confirmação se nenhum aparece com valor mensal.
-
----
-
-## Limitações do plano gratuito (importante para a demonstração)
-
-- **Cada serviço dorme sozinho** após ~15 minutos sem requisições e leva cerca de 1 minuto para acordar. Com 3 serviços, a **primeira requisição do dia pode ser lenta ou mostrar "indisponível"** para os nomes, porque o `tasks-service` espera no máximo `SERVICE_TIMEOUT` segundos por cada serviço dependente. **Antes de gravar ou apresentar, acorde os três**: abra `/api/health/` de `users` e `projects` e o `/api/health/?deep=1` de `tasks`. Se quiser que a primeira carga espere o serviço acordar em vez de mostrar "indisponível", aumente `SERVICE_TIMEOUT` (por exemplo para `45`; o `--timeout 60` do gunicorn já comporta isso).
-- **Os serviços se chamam pelas URLs públicas** (`https://...onrender.com`): serviços web gratuitos do Render não recebem tráfego da rede privada.
-- **Horas:** o Render dá 750 horas gratuitas por mês, somadas entre os serviços web; serviços dormindo não consomem horas. Não use "pings" para mantê-los acordados 24 horas.
-- **Banco:** o Neon gratuito suspende o banco quando fica sem uso e reativa sozinho na consulta seguinte (cerca de 1 segundo). Os dados ficam preservados.
-- Nunca coloque senhas ou a `SECRET_KEY` no código: tudo está em variáveis de ambiente, configuradas no painel.
-
-## Problemas comuns
-
-| Sintoma | Causa provável e solução |
-|---|---|
-| `/api/health/?deep=1` mostra `unavailable` | `USERS_SERVICE_URL`/`PROJECTS_SERVICE_URL` incorretas (sem `https://`, com `/api` no final) ou o serviço está dormindo. Acorde-o abrindo o `/api/health/` dele. |
-| Nomes aparecem como "indisponível" logo após acordar | Normal no plano gratuito (partida a frio). Clique em "Atualizar" em alguns segundos, ou aumente `SERVICE_TIMEOUT`. |
-| Build do serviço falha em `migrate` | `DATABASE_URL` errada ou copiada com pooling. Copie de novo no Neon. Cada serviço precisa da **sua** string. |
-| Frontend carrega mas dá erro de CORS | `CORS_ALLOWED_ORIGINS` diferente da URL real do frontend em **algum** dos 3 serviços (confira `https` e a ausência de barra no final). |
-| Frontend chama `localhost` em produção | As variáveis `*_API_URL` não estavam definidas no build. Defina e faça **Clear build cache & deploy**. |
-| Tarefas antigas perderam o responsável | Esperado: a migration `0003` troca o campo texto `responsible` por `responsible_id`. Reatribua pela interface. |
-| `/api/health/` responde `sqlite` | `DATABASE_URL` não está definida naquele serviço. |
+| `USERS_SERVICE_URL` e `PROJECTS_SERVICE_URL` (no tasks) | `https://...onrender.com` (**sem** `/api`) |
+| `TASKS_API_URL`, `USERS_API_URL`, `PROJECTS_API_URL` (no site) | `https://...onrender.com/api` (**com** `/api`) |
+| `CORS_ALLOWED_ORIGINS` (nos 3 serviços) | URL do site, sem barra no final |
 
 ## Justificativas técnicas
 
 | Decisão | Por quê |
 |---|---|
-| Dividir em tarefas, responsáveis e projetos | Contextos de negócio distintos, com dados e ciclo de vida próprios; cada um pode mudar, escalar e falhar de forma independente |
-| Um banco (um projeto Neon) por serviço | Isolamento de dados: nenhum serviço lê as tabelas do outro; a integração acontece só pela API |
-| Ids em vez de chaves estrangeiras entre serviços | Bancos separados não permitem FK; a consistência é garantida pelas chamadas HTTP (validação na escrita e estado `removed` na leitura) |
-| HTTP/REST síncrono entre serviços | Exigido pelo Módulo 2 e simples de testar; a comunicação assíncrona entra no Módulo 4 |
-| Consulta em lote (`?ids=`) e em paralelo | Evita uma chamada por tarefa (problema N+1) e reduz a latência de cada listagem |
-| Timeout e resposta degradada | Um serviço fora do ar não derruba os demais: a leitura continua e a escrita falha com mensagem clara |
-| Mesma stack (Django REST) nos três serviços | Reaproveita o código do Módulo 1 e mantém o projeto simples de manter e de containerizar no Módulo 3 |
-| Neon + Render | Planos gratuitos sem cartão; deploy a partir do Git; o PostgreSQL gratuito do Render expira em 30 dias |
+| Dividir em tarefas, responsáveis e projetos | Contextos distintos, com dados e ciclo de vida próprios; cada um muda, escala e falha de forma independente |
+| Um banco por serviço (também no Compose) | Isolamento de dados: nenhum serviço lê as tabelas do outro; a integração acontece só pela API |
+| Ids em vez de chaves estrangeiras entre serviços | Bancos separados não permitem FK; a consistência vem das chamadas HTTP (validação na escrita, estado `removed` na leitura) |
+| HTTP síncrono, em lote e em paralelo, com timeout | Simples de testar; evita uma chamada por tarefa; um serviço fora do ar não derruba os demais |
+| Um container por serviço e por banco | Cada peça isolada, com seu próprio ciclo de vida: dá para reiniciar o `users` sem tocar no `tasks` |
+| Dockerfile multi-stage, base slim e usuário não-root | Imagens menores, mais seguras e com cache de build eficiente |
+| Volumes nomeados | Os dados dos bancos sobrevivem à recriação dos containers |
+| `healthcheck` + `depends_on: service_healthy` | Ordem de inicialização correta (banco antes do serviço, serviços antes do `tasks`) sem `sleep` |
+| Compose em vez de Kubernetes | O trabalho pede orquestração local; o Compose resolve com poucos arquivos (Kubernetes é opcional) |
+| Neon + Render na nuvem | Planos gratuitos sem cartão; deploy a partir do Git |
 
-## Checklist de entrega — Módulo 2
+## Checklist de entrega — Módulo 3
 
-- [ ] Repositório atualizado, com uma pasta por serviço (`services/tasks`, `services/users`, `services/projects`)
-- [ ] 3 serviços publicados no Render, cada um com seu banco, e frontend atualizado
-- [ ] Diagrama da arquitetura (`docs/arquitetura.png`) e URLs públicas no topo deste README
-- [ ] Prints ou saída do `scripts/testar-microsservicos.sh` contra as URLs públicas
-- [ ] Teste de falha documentado (print com um serviço suspenso)
+- [ ] `Dockerfile` de cada serviço (`services/tasks`, `services/users`, `services/projects`) e do `frontend`
+- [ ] `docker-compose.yml` orquestrando serviços + bancos, com variáveis de ambiente e volumes
+- [ ] Prints (ou saída) do `scripts/testar-containers.sh` mostrando que os dados persistem após `down`/`up`
+- [ ] Seção de comparação deste README (deploy direto × containers)
+- [ ] Vídeo curto no YouTube (**não listado**) mostrando os containers rodando, com o link no topo deste README
 - [ ] `CHANGELOG.md` atualizado
-- [ ] Tag da entrega: `git tag entrega-2-microsservicos && git push origin entrega-2-microsservicos`
+- [ ] Tag da entrega: `git tag entrega-3-containers && git push origin entrega-3-containers`
 
-## Histórico e próximos módulos
+## Próximo módulo
 
-- **Módulo 1 (Computação em Nuvem):** tag `entrega-1-cloud`, com a API única publicada no Render.
-- **Módulo 3 (Containers):** cada serviço ganhará um `Dockerfile` e haverá um `docker-compose.yml` com os serviços e os bancos.
-- **Módulo 4 (Mensageria):** o `tasks-service` publicará o evento "tarefa concluída" no RabbitMQ (o campo `completed_at` já existe) e um serviço consumidor confirmará o recebimento.
+**Módulo 4 (Mensageria):** o `tasks-service` publicará o evento "tarefa concluída" no RabbitMQ (o campo `completed_at` já existe) e um serviço consumidor confirmará o recebimento. O `docker-compose.yml` ganhará o container `rabbitmq` (imagem `rabbitmq:management`).

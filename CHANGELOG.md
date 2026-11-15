@@ -1,5 +1,14 @@
 # Changelog
 
+## [Módulo 3] — Containers · tag `entrega-3-containers`
+- `Dockerfile` para cada microsserviço (`services/tasks`, `services/users`, `services/projects`): multi-stage (virtualenv no estágio `builder`), base `python:3.12-slim`, usuário sem privilégios, `HEALTHCHECK`, porta configurável por `$PORT` e `entrypoint.sh` que aplica as migrações antes de iniciar o gunicorn.
+- `Dockerfile` do frontend: o Angular é compilado em um estágio com Node e só os arquivos compilados vão para uma imagem `nginx` (com `nginx.conf` de aplicação de página única e cache).
+- `docker-compose.yml`: 7 containers (3 serviços, 3 PostgreSQL, 1 frontend), variáveis de ambiente, volumes nomeados (`users_data`, `projects_data`, `tasks_data`), `healthcheck` e `depends_on` com `service_healthy`.
+- `.dockerignore` em cada contexto de build e `.env.example` para o Compose.
+- `scripts/testar-containers.sh`: teste documentado de persistência dos dados após `docker compose down` e `up`.
+- README com a seção do Módulo 3 (subir, variáveis, volumes, teste, comparação deploy direto × containers, publicação opcional no Render com imagens). O passo a passo de deploy no Render foi para `docs/deploy-render.md`.
+- Novo diagrama: `docs/arquitetura-containers.svg` e `.png`.
+
 ## [Módulo 2] — Serviços / Microsserviços · tag `entrega-2-microsservicos`
 - O backend único foi decomposto em **3 microsserviços Django**, cada um com seu próprio banco PostgreSQL (Neon):
   - `services/tasks` — tarefas (o antigo `backend/`);
