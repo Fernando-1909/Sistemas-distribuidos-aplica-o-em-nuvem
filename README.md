@@ -3,6 +3,7 @@
 Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). A mesma aplicação (um gerenciador de tarefas) evolui a cada módulo. Este repositório está no **Módulo 3 — Containers**: cada microsserviço tem o seu `Dockerfile` e o sistema inteiro, com os bancos, sobe com um único comando (`docker compose up`).
 
 - **Vídeo do Módulo 1:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
+- **Vídeo do Módulo 2:** _https://www.youtube.com/watch?v=5Vl8TrylzPc_
 - **Frontend:** _https://https://tarefas-frontend-hn3e.onrender.com/_
 - **tasks-service:** _https://SEU-TASKS.onrender.com/api/_
 - **users-service:** _https://SEU-USERS.onrender.com/api/_
