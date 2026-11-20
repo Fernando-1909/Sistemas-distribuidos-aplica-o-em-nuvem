@@ -133,5 +133,13 @@ PROJECTS_SERVICE_URL = os.environ.get("PROJECTS_SERVICE_URL", "http://localhost:
 # Render um servico "dormindo" leva ~1 min para acordar; ajuste conforme a necessidade.
 SERVICE_TIMEOUT = float(os.environ.get("SERVICE_TIMEOUT", "8"))
 
+# ----------------------------------------------------------------------------
+# Mensageria (RabbitMQ): o evento "tarefa concluida" e publicado por este servico.
+# Sem RABBITMQ_URL a publicacao fica desligada (ex.: deploy no Render sem broker).
+# ----------------------------------------------------------------------------
+RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "")
+# Tempo maximo (segundos) para conectar/publicar: um broker fora do ar nao pode travar a API.
+RABBITMQ_TIMEOUT = float(os.environ.get("RABBITMQ_TIMEOUT", "3"))
+
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
