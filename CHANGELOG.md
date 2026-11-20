@@ -1,5 +1,13 @@
 # Changelog
 
+## [Módulo 4] — Mensageria e streaming de eventos · tag `entrega-4-mensageria`
+- **RabbitMQ em container** (`rabbitmq:4-management`, com painel de administração em `localhost:15672`) no `docker-compose.yml`, com volume `rabbitmq_data`, `healthcheck` e `hostname` fixo.
+- **Produtor:** o `tasks-service` publica o evento "tarefa concluída" (exchange `tarefas.eventos`, routing key `tarefa.concluida`) quando o status passa a `done`. Publica depois do commit, não derruba a API se o broker estiver fora do ar e fica desligado sem `RABBITMQ_URL` (deploy no Render inalterado). `/api/health/?deep=1` mostra o estado do RabbitMQ.
+- **Consumidor:** novo serviço `services/notifications` (Python + pika): cria a fila durável, recebe o evento, confirma (ack) e registra no log; reconecta sozinho.
+- `scripts/testar-mensageria.sh`: teste documentado do fluxo (inclui o consumidor parado e a mensagem esperando na fila).
+- `docs/mensageria-vs-streaming.md` e `docs/mensageria-diagrama.svg/.png`: comparação entre mensageria (RabbitMQ) e streaming (Kafka/Redpanda) para o cenário "tarefa concluída".
+- Dependência nova no tasks-service: `pika`. Variáveis novas: `RABBITMQ_URL`, `RABBITMQ_TIMEOUT` (tasks), `RABBITMQ_PASSWORD` (Compose).
+
 ## [Módulo 3] — Containers · tag `entrega-3-containers`
 - `Dockerfile` para cada microsserviço (`services/tasks`, `services/users`, `services/projects`): multi-stage (virtualenv no estágio `builder`), base `python:3.12-slim`, usuário sem privilégios, `HEALTHCHECK`, porta configurável por `$PORT` e `entrypoint.sh` que aplica as migrações antes de iniciar o gunicorn.
 - `Dockerfile` do frontend: o Angular é compilado em um estágio com Node e só os arquivos compilados vão para uma imagem `nginx` (com `nginx.conf` de aplicação de página única e cache).

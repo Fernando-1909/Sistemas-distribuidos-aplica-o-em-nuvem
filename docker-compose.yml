@@ -1,4 +1,5 @@
-# Orquestra o sistema inteiro: 3 microsserviços + 3 bancos PostgreSQL + frontend.
+# Orquestra o sistema inteiro: 3 microsserviços + 3 bancos PostgreSQL + frontend
+# + RabbitMQ (broker) e o consumidor de eventos (Módulo 4).
 #   docker compose up --build -d     (sobe tudo)
 #   docker compose down              (para; os DADOS ficam nos volumes)
 #   docker compose down -v           (para e APAGA os dados)
@@ -98,6 +99,8 @@ services:
         condition: service_healthy
       projects:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       <<: *django-env
       DATABASE_URL: postgresql://tasks:${TASKS_DB_PASSWORD:-tasks_dev}@tasks-db:5432/tasks_db
@@ -106,8 +109,41 @@ services:
       USERS_SERVICE_URL: http://users:8000
       PROJECTS_SERVICE_URL: http://projects:8000
       SERVICE_TIMEOUT: "5"
+      # Módulo 4: o tasks-service PUBLICA o evento "tarefa concluída" no RabbitMQ
+      RABBITMQ_URL: amqp://tarefas:${RABBITMQ_PASSWORD:-tarefas_dev}@rabbitmq:5672/%2F
     ports:
       - "8000:8000"
+
+  # ----------------------------- mensageria --------------------------------
+  # Broker de mensagens (imagem oficial rabbitmq com o painel de administração)
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq   # nome fixo do nó: sem isso o volume não reaproveita os dados após o down/up
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: tarefas
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-tarefas_dev}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "15672:15672"   # painel de administração: http://localhost:15672
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  # Consumidor: recebe o evento "tarefa concluída" e confirma o recebimento no log
+  notifications:
+    build: ./services/notifications
+    image: tarefas/notifications:latest
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_URL: amqp://tarefas:${RABBITMQ_PASSWORD:-tarefas_dev}@rabbitmq:5672/%2F
 
   # ----------------------------- frontend ----------------------------------
   frontend:
@@ -130,3 +166,4 @@ volumes:
   users_data:
   projects_data:
   tasks_data:
+  rabbitmq_data:
