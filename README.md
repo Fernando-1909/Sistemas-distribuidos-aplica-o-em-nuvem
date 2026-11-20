@@ -1,14 +1,34 @@
 # Gerenciador de tarefas distribuído
 
-Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). A mesma aplicação (um gerenciador de tarefas) evolui a cada módulo. Este repositório está no **Módulo 3 — Containers**: cada microsserviço tem o seu `Dockerfile` e o sistema inteiro, com os bancos, sobe com um único comando (`docker compose up`).
+Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). A mesma aplicação (um gerenciador de tarefas) evolui a cada módulo. Este repositório está no **Módulo 4 — Mensageria e streaming de eventos**: além dos microsserviços em containers (Módulo 3), o `tasks-service` publica o evento "tarefa concluída" no **RabbitMQ** e um serviço consumidor (`notifications`) o recebe. O sistema inteiro sobe com um único comando (`docker compose up`).
 
-- **Vídeo do Módulo 1:** _https://www.youtube.com/watch?v=KyOGIrHJiOc_
+- **Vídeo do Módulo 1:** https://www.youtube.com/watch?v=KyOGIrHJiOc
 - **Vídeo do Módulo 2:** _https://www.youtube.com/watch?v=5Vl8TrylzPc_
 - **Vídeo do Módulo 3:** _https://www.youtube.com/watch?v=plQtddAodjo_
-- **Frontend:** _https://https://tarefas-frontend-hn3e.onrender.com/_
-- **tasks-service:** _https://SEU-TASKS.onrender.com/api/_
-- **users-service:** _https://SEU-USERS.onrender.com/api/_
-- **projects-service:** _https://SEU-PROJECTS.onrender.com/api/_
+- **Vídeo do Módulo 4:** _link vai ficar aqui qnd eu gravar_
+- **Frontend (nuvem):** https://tarefas-frontend-hn3e.onrender.com
+- **tasks-service (nuvem):** https://tarefas-api-fepn.onrender.com/api/
+- **users-service (nuvem):** https://tarefas-users.onrender.com/api/
+- **projects-service (nuvem):** https://tarefas-projects.onrender.com/api/
+
+| Módulo | Tema | Onde está | Tag Git |
+|---|---|---|---|
+| 1 | Computação em nuvem | API única publicada no Render | `entrega-1-cloud` |
+| 2 | Microsserviços | `services/` (tasks, users, projects) no Render | `entrega-2-microsservicos` |
+| 3 | Containers | `Dockerfile` por serviço + `docker-compose.yml` | `entrega-3-containers` |
+| 4 | Mensageria e streaming de eventos | RabbitMQ + serviço `notifications` (consumidor) + documento sobre streaming | `entrega-4-mensageria` |
+
+## Início rápido com Docker
+
+Requisitos: [Docker](https://docs.docker.com/get-docker/) (Docker Desktop no Windows/macOS; Docker Engine com o plugin Compose no Linux).
+
+```bash
+git clone https://github.com/Fernando-1909/Sistemas-distribuidos-aplica-o-em-nuvem.git
+cd Sistemas-distribuidos-aplica-o-em-nuvem
+docker compose up --build -d
+```
+
+Na primeira vez o Docker baixa as imagens base e constrói as 4 imagens (alguns minutos). Quando terminar, abra **http://localhost:4200**. Para parar mantendo os dados: `docker compose down`.
 
 ## Arquitetura dos serviços (Módulo 2)
 
@@ -30,10 +50,11 @@ services/
   tasks/      tasks-service    (Dockerfile, entrypoint.sh, config/, tasks/, ...)
   users/      users-service    (Dockerfile, entrypoint.sh, config/, members/, ...)
   projects/   projects-service (Dockerfile, entrypoint.sh, config/, projects/, ...)
+  notifications/  consumidor de eventos do RabbitMQ (Módulo 4: consumer.py, Dockerfile)
 frontend/     App Angular (Dockerfile, nginx.conf, src/)
-docs/         diagramas e o guia de deploy no Render (deploy-render.md)
-scripts/      testar-containers.sh, testar-microsservicos.sh, testar-api.sh
-docker-compose.yml   sobe tudo localmente: 3 serviços + 3 bancos + frontend
+docs/         diagramas, mensageria-vs-streaming.md (Módulo 4) e o guia de deploy no Render
+scripts/      testar-mensageria.sh, testar-containers.sh, testar-microsservicos.sh, testar-api.sh
+docker-compose.yml   sobe tudo localmente: 3 serviços + 3 bancos + frontend + RabbitMQ + consumidor
 .env.example         valores opcionais para o Compose
 render.yaml          atalho para o deploy sem Docker no Render
 ```
@@ -74,7 +95,7 @@ Todos os serviços têm `GET /api/health/` (testa o serviço e a conexão com o 
 ## O que foi feito
 
 - **Um `Dockerfile` por serviço** (`services/tasks`, `services/users`, `services/projects`) e um para o frontend.
-- **`docker-compose.yml`** que orquestra **7 containers**: 3 serviços Django, 3 bancos PostgreSQL (um por serviço) e o frontend servido por nginx.
+- **`docker-compose.yml`** que orquestra **7 containers**: 3 serviços Django, 3 bancos PostgreSQL (um por serviço) e o frontend servido por nginx. (O Módulo 4 acrescenta mais 2: `rabbitmq` e `notifications`, num total de 9.)
 - **Variáveis de ambiente** no Compose (com valores de desenvolvimento por padrão e `.env` opcional) e **volumes nomeados** para os dados dos bancos.
 - **Teste documentado** de que os dados persistem após `docker compose down` e `up` (`scripts/testar-containers.sh`).
 - **Comparação** entre o deploy direto (Módulos 1 e 2) e o conteinerizado, mais abaixo.
@@ -243,6 +264,133 @@ docker system prune                 # limpa imagens/containers sem uso
 
 ---
 
+# Módulo 4 — Mensageria e streaming de eventos
+
+## O que foi feito
+
+- **RabbitMQ em container** (imagem oficial `rabbitmq:4-management`, com painel de administração) no `docker-compose.yml`, com volume para os dados.
+- **Produtor:** o `tasks-service` publica o evento **"tarefa concluída"** quando o status de uma tarefa **passa a** `done`.
+- **Consumidor:** o serviço `notifications` (`services/notifications/consumer.py`) recebe o evento, **confirma o recebimento (ack)** e registra uma linha no log.
+- **Teste documentado** do fluxo (`scripts/testar-mensageria.sh`).
+- **Documento comparativo** mensageria × streaming, com diagrama: [`docs/mensageria-vs-streaming.md`](docs/mensageria-vs-streaming.md) (resumo abaixo).
+
+![Mensageria e streaming](docs/mensageria-diagrama.png)
+
+## Como funciona
+
+```
+tasks-service (produtor) --> exchange "tarefas.eventos" --(tarefa.concluida)--> fila "notificacoes.tarefa-concluida" --> notifications (consumidor)
+```
+
+1. O usuário conclui uma tarefa (`PATCH /api/tasks/<id>/` com `{"status":"done"}`, ou o círculo da tarefa no site).
+2. O `tasks-service` grava no banco e, **depois**, publica a mensagem na exchange `tarefas.eventos` (tipo *topic*) com a routing key `tarefa.concluida`.
+3. O RabbitMQ coloca a mensagem na fila `notificacoes.tarefa-concluida`, criada pelo consumidor.
+4. O `notifications` recebe a mensagem, escreve no log e envia o **ack**; só então o RabbitMQ a remove da fila.
+
+Formato do evento (JSON):
+
+```json
+{
+  "event_id": "ac7b88bc-8fbc-4393-a066-2c52db3ea3ec",
+  "event_type": "task.completed",
+  "occurred_at": "2026-11-18T23:45:33.123456+00:00",
+  "source": "tasks-service",
+  "task": { "id": 1, "title": "Entregar o Módulo 4", "status": "done", "priority": 4,
+            "responsible_id": 2, "project_id": 1, "completed_at": "2026-11-18T23:45:33.123456+00:00" }
+}
+```
+
+Decisões de projeto:
+
+| Decisão | Por quê |
+|---|---|
+| O evento só é publicado quando o status **vira** `done` | Editar uma tarefa que já está concluída não gera evento repetido |
+| Publicação depois da gravação no banco (`transaction.on_commit`) | Ninguém é avisado de uma conclusão que não foi gravada |
+| A API não falha se o RabbitMQ estiver fora do ar | A falha é registrada no log (e `?deep=1` mostra `rabbitmq: unavailable`); a tarefa é concluída normalmente |
+| O consumidor cria a fila e a liga à exchange | O produtor não conhece o consumidor |
+| Fila durável + mensagem persistente + `ack` manual | A mensagem sobrevive ao reinício do broker e ao consumidor parado |
+| `hostname: rabbitmq` no Compose | Dá um nome fixo ao nó, necessário para o volume reaproveitar os dados depois de `down`/`up` |
+| Sem `RABBITMQ_URL` a publicação é desligada | O deploy no Render, que não tem broker, continua funcionando como antes |
+
+## Variáveis de ambiente (Módulo 4)
+
+| Variável | Onde | Valor no Compose | Para que serve |
+|---|---|---|---|
+| `RABBITMQ_URL` | tasks e notifications | `amqp://tarefas:SENHA@rabbitmq:5672/%2F` | Endereço do broker (o host `rabbitmq` é o nome do container) |
+| `RABBITMQ_TIMEOUT` | tasks | `3` (padrão) | Segundos de espera ao conectar/publicar |
+| `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` | rabbitmq | `tarefas` / `RABBITMQ_PASSWORD` (padrão `tarefas_dev`) | Usuário e senha criados na primeira inicialização |
+| `RABBITMQ_PASSWORD` | `.env` (opcional) | `tarefas_dev` | Senha do RabbitMQ usada pelo Compose |
+
+## Subindo e vendo o fluxo funcionar
+
+```bash
+docker compose up --build -d      # sobe os 9 containers
+docker compose ps                 # todos "healthy" (o notifications não tem healthcheck e aparece só como "Up")
+```
+
+- **Painel do RabbitMQ:** http://localhost:15672 (usuário `tarefas`, senha `tarefas_dev`). Em **Queues**, abra `notificacoes.tarefa-concluida`; em **Exchanges**, `tarefas.eventos`.
+- Conclua uma tarefa no site (http://localhost:4200) e veja o log do consumidor:
+
+```bash
+docker compose logs -f notifications
+```
+
+## Teste documentado
+
+```bash
+bash scripts/testar-mensageria.sh        # no Windows, use o Git Bash ou o WSL
+```
+
+O script (1) sobe tudo; (2) mostra que o `?deep=1` do `tasks-service` enxerga o RabbitMQ; (3) conclui uma tarefa e mostra a linha **publicada → consumida** no log do `notifications`; (4) **para o consumidor**, conclui outra tarefa (a API responde normalmente) e mostra a mensagem **esperando na fila**; (5) religa o consumidor, que recebe a mensagem. Tire **prints** da saída. Exemplo de execução:
+
+```text
+==> 2. Health check do produtor (mostra o estado do RabbitMQ)
+{"status":"ok","service":"tasks","database":"postgresql","dependencies":{"users":"ok","projects":"ok","rabbitmq":"ok"}}
+
+==> 3. Fluxo básico: concluir uma tarefa publica o evento e o consumidor o recebe
+PATCH /api/tasks/3/ {"status":"done"} -> HTTP 200
+2026-11-18 23:46:45 [notifications] INFO EVENTO RECEBIDO: task.completed | tarefa #3 "Tarefa concluída 234642" concluída | responsible_id=None project_id=None | event_id=fa727dd9-96e2-44a7-8cef-e95fab6110a7
+fila notificacoes.tarefa-concluida: mensagens_esperando=0 mensagens_sem_confirmacao=0 consumidores=1
+
+==> 4. Desacoplamento: com o consumidor PARADO, a API continua funcionando e as mensagens esperam na fila
+PATCH /api/tasks/4/ {"status":"done"} -> HTTP 200
+fila notificacoes.tarefa-concluida: mensagens_esperando=1 mensagens_sem_confirmacao=0 consumidores=0   <- a mensagem espera na fila, sem consumidor
+
+==> 5. Religando o consumidor: ele recebe a mensagem que ficou esperando
+2026-11-18 23:46:50 [notifications] INFO EVENTO RECEBIDO: task.completed | tarefa #4 "Concluída com consumidor parado 234642" concluída | responsible_id=None project_id=None | event_id=cf5c32dc-4b57-47c1-8c08-007184ab5f68
+fila notificacoes.tarefa-concluida: mensagens_esperando=0 mensagens_sem_confirmacao=0 consumidores=1
+OK: produtor -> RabbitMQ -> consumidor funcionando (inclusive com o consumidor parado).
+```
+
+Outros testes manuais úteis:
+
+| Teste | Comando | Resultado esperado |
+|---|---|---|
+| Broker fora do ar | `docker compose stop rabbitmq`, depois concluir uma tarefa | A API responde 200; `GET /api/health/?deep=1` mostra `"rabbitmq":"unavailable"`; o log do `tasks` registra "Falha ao publicar o evento" |
+| Mensagem persiste | Com o `notifications` parado, concluir uma tarefa, `docker compose down` e `docker compose up -d` | O consumidor recebe a mensagem que ficou guardada no volume `rabbitmq_data` |
+| Estado da fila em tempo real | `docker compose exec rabbitmq rabbitmqctl list_queues name messages_ready consumers` | Mostra quantas mensagens esperam e quantos consumidores existem |
+
+## Mensageria × streaming (resumo)
+
+O documento completo, com diagrama e tabela, está em **[docs/mensageria-vs-streaming.md](docs/mensageria-vs-streaming.md)**.
+
+- **Mensageria (implementada, RabbitMQ):** o evento vai para uma fila, é entregue a um consumidor e **removido depois do ack**. É simples de operar e basta para um único consumidor e baixo volume, que é o nosso caso.
+- **Streaming (proposta, Kafka/Redpanda):** o evento é gravado em um **log retido** (tópico `tasks.events`, chave = id da tarefa). Vários consumidores independentes (`notifications`, `métricas`, `auditoria`) leem o mesmo evento, cada um no seu ritmo, e é possível **reler o histórico**.
+- **Quando o streaming se justificaria mais:** com vários serviços interessados no mesmo evento, necessidade de reprocessar o histórico, alto volume ou processamento contínuo (agregações por janela de tempo).
+
+## Problemas comuns (RabbitMQ)
+
+| Sintoma | Causa provável e solução |
+|---|---|
+| O `rabbitmq` demora a ficar `healthy` | Na primeira vez leva cerca de 20 a 40 segundos. Espere; o `tasks` e o `notifications` só sobem depois dele |
+| Não consigo entrar no painel (`localhost:15672`) | Use usuário `tarefas` e a senha `tarefas_dev` (ou o valor de `RABBITMQ_PASSWORD` no `.env`). O usuário `guest` não está habilitado |
+| Mudei `RABBITMQ_PASSWORD` e deu erro de autenticação | O usuário só é criado na primeira inicialização do volume. Recrie com `docker compose down -v` e suba de novo |
+| O consumidor não imprime nada | `docker compose logs notifications`. Se mostrar "RabbitMQ indisponível", ele tenta reconectar sozinho; confira se o `rabbitmq` está `healthy`. Só tarefas que **viram** concluídas geram evento |
+| Concluí uma tarefa e a mensagem sumiu | Eventos publicados quando **ainda não existia a fila** são descartados pelo broker (a fila é criada na primeira inicialização do consumidor). Suba o `notifications` antes de usar |
+| Porta 15672 em uso | Mude o lado esquerdo da porta do `rabbitmq` no Compose |
+
+---
+
 ## Rodando localmente sem Docker
 
 Requisitos: Python 3.12+ e Node 20.19+ (ou 22.12+). Sem `DATABASE_URL`, cada serviço usa o seu próprio SQLite.
@@ -267,6 +415,7 @@ cd frontend          && npm install && npm start            # http://localhost:4
 
 | Script | O que testa |
 |---|---|
+| `scripts/testar-mensageria.sh` | **Módulo 4:** publica o evento "tarefa concluída", mostra o consumidor recebendo e prova que as mensagens esperam na fila com o consumidor parado |
 | `scripts/testar-containers.sh` | **Módulo 3:** sobe o Compose e prova a persistência dos dados após `down`/`up` |
 | `scripts/testar-microsservicos.sh [URL_TASKS URL_USERS URL_PROJECTS]` | Módulo 2: comunicação entre os serviços (local ou na nuvem) |
 | `scripts/testar-api.sh [URL]` | Módulo 1: CRUD do `tasks-service` |
@@ -296,6 +445,10 @@ O passo a passo completo está em **[docs/deploy-render.md](docs/deploy-render.m
 | Volumes nomeados | Os dados dos bancos sobrevivem à recriação dos containers |
 | `healthcheck` + `depends_on: service_healthy` | Ordem de inicialização correta (banco antes do serviço, serviços antes do `tasks`) sem `sleep` |
 | Compose em vez de Kubernetes | O trabalho pede orquestração local; o Compose resolve com poucos arquivos (Kubernetes é opcional) |
+| RabbitMQ (mensageria) para o evento "tarefa concluída" | Há um único consumidor simples e baixo volume: o RabbitMQ resolve com poucas peças. O streaming (Kafka/Redpanda) só compensaria com vários consumidores, reprocessamento de histórico ou alto volume (ver `docs/mensageria-vs-streaming.md`) |
+| Produtor desacoplado do consumidor (exchange + fila) | O `tasks-service` só publica na exchange; novos consumidores entram sem alterar o produtor |
+| Publicar sem derrubar a API | Se o broker cair, a tarefa continua sendo concluída (o erro vai para o log): a mensageria não pode virar ponto único de falha da API |
+| Fila durável, mensagem persistente e `ack` manual | A mensagem sobrevive ao reinício do broker e só é removida depois que o consumidor confirma |
 | Neon + Render na nuvem | Planos gratuitos sem cartão; deploy a partir do Git |
 
 ## Checklist de entrega — Módulo 3
@@ -308,6 +461,15 @@ O passo a passo completo está em **[docs/deploy-render.md](docs/deploy-render.m
 - [ ] `CHANGELOG.md` atualizado
 - [ ] Tag da entrega: `git tag entrega-3-containers && git push origin entrega-3-containers`
 
-## Próximo módulo
+## Checklist de entrega — Módulo 4
 
-**Módulo 4 (Mensageria):** o `tasks-service` publicará o evento "tarefa concluída" no RabbitMQ (o campo `completed_at` já existe) e um serviço consumidor confirmará o recebimento. O `docker-compose.yml` ganhará o container `rabbitmq` (imagem `rabbitmq:management`).
+- [ ] RabbitMQ em container (`rabbitmq:4-management`) no `docker-compose.yml`
+- [ ] Produtor (`services/tasks/tasks/events.py`) e consumidor (`services/notifications/consumer.py`) funcionando para o evento "tarefa concluída"
+- [ ] Prints (ou saída) do `scripts/testar-mensageria.sh` mostrando o evento publicado e consumido
+- [ ] Documento comparativo + diagrama: `docs/mensageria-vs-streaming.md` (e o resumo deste README)
+- [ ] `CHANGELOG.md` atualizado
+- [ ] Tag da entrega: `git tag entrega-4-mensageria && git push origin entrega-4-mensageria`
+
+## Ideias para evoluir
+
+O `notifications` poderia enviar um e-mail de verdade; novos consumidores (métricas, auditoria) poderiam ouvir o mesmo evento, e a publicação poderia usar o padrão *outbox* para não perder eventos se o broker cair no instante da gravação (ver `docs/mensageria-vs-streaming.md`).
