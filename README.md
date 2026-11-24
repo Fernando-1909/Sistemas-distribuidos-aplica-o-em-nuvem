@@ -5,7 +5,6 @@ Projeto incremental da 3ª unidade de **Sistemas Distribuídos** (UERN/DCC). A m
 - **Vídeo do Módulo 1:** https://www.youtube.com/watch?v=KyOGIrHJiOc
 - **Vídeo do Módulo 2:** _https://www.youtube.com/watch?v=5Vl8TrylzPc_
 - **Vídeo do Módulo 3:** _https://www.youtube.com/watch?v=plQtddAodjo_
-- **Vídeo do Módulo 4:** _link vai ficar aqui qnd eu gravar_
 - **Frontend (nuvem):** https://tarefas-frontend-hn3e.onrender.com
 - **tasks-service (nuvem):** https://tarefas-api-fepn.onrender.com/api/
 - **users-service (nuvem):** https://tarefas-users.onrender.com/api/
